@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
+from .constants import ALLOWED_MOODS
 from .docs import (
     BUG_BLAME_DESC,
     CODE_REVIEW_DESC,
@@ -105,7 +106,7 @@ class BaseWitView(APIView):
 # ---------------------------------------------------------------------------
 
 _Q_PARAM = OpenApiParameter("q", str, OpenApiParameter.QUERY, required=False, description="Optional context for a personalized response")
-_MOOD_PARAM = OpenApiParameter("mood", str, OpenApiParameter.QUERY, required=False, description="Response mood (e.g. sarcastic, angry, funny, sad, excited, dramatic, passive-aggressive, philosophical, wholesome, unhinged)")
+_MOOD_PARAM = OpenApiParameter("mood", str, OpenApiParameter.QUERY, required=False, description="Response mood. One of: " + ", ".join(sorted(ALLOWED_MOODS)))
 
 
 # ---------------------------------------------------------------------------
@@ -213,7 +214,7 @@ class RoastView(BaseWitView):
         sanitized = re.sub(r"[^a-zA-Z0-9 ]", "", name)[:100].strip()
         if not sanitized:
             return Response(
-                {"error": "Name must contain at least one alphanumeric character"},
+                {"error": "Name must contain at least one alphanumeric character", "code": "invalid_request"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return self.handle_generate(request, "roast", user_input=sanitized)
@@ -231,7 +232,7 @@ class WorthItView(BaseWitView):
         q = request.query_params.get("q", "").strip()
         if not q:
             return Response(
-                {"error": "Query parameter 'q' is required"},
+                {"error": "Query parameter 'q' is required", "code": "invalid_request"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return self.handle_generate(request, "worth-it", user_input=q)
@@ -249,7 +250,7 @@ class ExplainLikeIm5View(BaseWitView):
         q = request.query_params.get("q", "").strip()
         if not q:
             return Response(
-                {"error": "Query parameter 'q' is required"},
+                {"error": "Query parameter 'q' is required", "code": "invalid_request"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return self.handle_generate(request, "explain-like-im-5", user_input=q)
@@ -323,7 +324,7 @@ class NameSuggestionView(BaseWitView):
         q = request.query_params.get("q", "").strip()
         if not q:
             return Response(
-                {"error": "Query parameter 'q' is required"},
+                {"error": "Query parameter 'q' is required", "code": "invalid_request"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return self.handle_generate(request, "name-suggestion", user_input=q)
@@ -380,7 +381,7 @@ class JargonTranslatorView(BaseWitView):
         q = request.query_params.get("q", "").strip()
         if not q:
             return Response(
-                {"error": "Query parameter 'q' is required"},
+                {"error": "Query parameter 'q' is required", "code": "invalid_request"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return self.handle_generate(request, "jargon-translator", user_input=q)
@@ -418,7 +419,7 @@ class TechBattleView(BaseWitView):
         q = request.query_params.get("q", "").strip()
         if not q:
             return Response(
-                {"error": "Query parameter 'q' is required — provide a matchup like 'coffee vs tea'"},
+                {"error": "Query parameter 'q' is required — provide a matchup like 'coffee vs tea'", "code": "invalid_request"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return self.handle_generate(request, "tech-battle", user_input=q)
@@ -439,7 +440,7 @@ class RateAnythingView(BaseWitView):
         q = request.query_params.get("q", "").strip()
         if not q:
             return Response(
-                {"error": "Query parameter 'q' is required — tell us what to rate"},
+                {"error": "Query parameter 'q' is required — tell us what to rate", "code": "invalid_request"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return self.handle_generate(request, "rate-anything", user_input=q)
@@ -472,7 +473,7 @@ class TldrView(BaseWitView):
         q = request.query_params.get("q", "").strip()
         if not q:
             return Response(
-                {"error": "Query parameter 'q' is required — describe what to summarize"},
+                {"error": "Query parameter 'q' is required — describe what to summarize", "code": "invalid_request"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return self.handle_generate(request, "tldr", user_input=q)

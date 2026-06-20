@@ -72,6 +72,7 @@ class TestWitViews:
     def test_roast_empty_name(self):
         resp = self.client.get("/v1/wit/roast/!!!/")
         assert resp.status_code == 400
+        assert resp.json()["code"] == "invalid_request"
 
     @patch("wit.views.WitService.generate")
     def test_worth_it_endpoint(self, mock_gen):
@@ -82,6 +83,7 @@ class TestWitViews:
     def test_worth_it_missing_q(self):
         resp = self.client.get("/v1/wit/worth-it/")
         assert resp.status_code == 400
+        assert resp.json()["code"] == "invalid_request"
 
     @patch("wit.views.WitService.generate")
     def test_eli5_endpoint(self, mock_gen):
@@ -92,6 +94,7 @@ class TestWitViews:
     def test_eli5_missing_q(self):
         resp = self.client.get("/v1/wit/explain-like-im-5/")
         assert resp.status_code == 400
+        assert resp.json()["code"] == "invalid_request"
 
     @patch("wit.views.WitService.generate")
     def test_error_code_on_provider_failure(self, mock_gen):

@@ -13,7 +13,7 @@ def _response(provider):
 class TestGenerateWithFallback:
     @patch("wit.services.ProviderRegistry")
     def test_primary_success_skips_fallbacks(self, mock_registry):
-        primary = MagicMock(name="primary")
+        primary = MagicMock()
         primary.name = "groq"
         primary.generate.return_value = _response("groq")
         mock_registry.get.return_value = primary

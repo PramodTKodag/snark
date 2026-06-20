@@ -30,7 +30,7 @@ snark/
     ├── models.py       # Persona, ResponseLog
     ├── views.py        # 28 wit endpoints + 3 health endpoints
     ├── services.py     # WitService orchestrator (caching, anti-repetition, fallback)
-    ├── serializers.py  # WitInputSerializer, WitResponseSerializer, HealthResponseSerializer
+    ├── serializers.py  # WitQuerySerializer, WitResponseSerializer, HealthResponseSerializer
     ├── docs.py         # OpenAPI description constants per endpoint
     ├── urls.py         # All wit URL patterns
     ├── admin.py        # Django admin registration
@@ -95,7 +95,7 @@ Every wit endpoint follows the same 5-file pattern:
 4. **`urls.py`** — Register the path
 5. **`tests/`** — Add test cases
 
-**Never** call AI SDKs (anthropic, groq, google-genai) directly in views. Always go through `WitService.generate(slug, user_input, ip)`.
+**Never** call AI SDKs (anthropic, groq, google-genai) directly in views. Always go through `WitService.generate(slug, user_input, mood)`.
 
 ### Adding a New Provider
 
@@ -108,7 +108,7 @@ Every wit endpoint follows the same 5-file pattern:
 ### WitService Flow
 
 ```
-View → WitService.generate(slug, input, ip)
+View → WitService.generate(slug, input, mood)
   → _load_persona(slug)          # cached 1hr
   → _response_cache_key()        # check 5min cache
   → _build_prompt(persona, mood) # system prompt + mood modifier
@@ -139,7 +139,10 @@ Tests use Django's test client. Provider tests mock the AI SDK calls. The `conft
 | `SECRET_KEY` | Yes | Django secret key |
 | `DEBUG` | No | `True` for local dev only |
 | `AI_DEFAULT_PROVIDER` | Yes | `groq`, `gemini`, or `claude` |
-| `AI_DEFAULT_MODEL` | Yes | Model name for the default provider |
+| `AI_PROVIDER_FALLBACK_ORDER` | No | JSON list of provider names for fallback ordering |
+| `GROQ_MODEL` | No | Groq model override (default provided) |
+| `GEMINI_MODEL` | No | Gemini model override (default provided) |
+| `CLAUDE_MODEL` | No | Claude model override (default provided) |
 | `GROQ_API_KEY` | If using groq | Free tier available |
 | `GEMINI_API_KEY` | If using gemini | Free tier available |
 | `ANTHROPIC_API_KEY` | If using claude | Paid |
