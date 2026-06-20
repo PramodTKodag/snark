@@ -19,6 +19,10 @@ ALLOWED_MOODS = frozenset({
 })
 
 
+def persona_cache_key(slug: str) -> str:
+    return f"persona:{slug}"
+
+
 class PersonaNotFoundError(Exception):
     pass
 
@@ -114,7 +118,7 @@ class WitService:
 
     @staticmethod
     def _load_persona(slug: str) -> Persona:
-        cache_key = f"persona:{slug}"
+        cache_key = persona_cache_key(slug)
         persona = cache.get(cache_key)
         if persona:
             return persona
