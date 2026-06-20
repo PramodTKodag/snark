@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(make *)",
+      "Bash(cd snark && python -m pytest*)",
+      "Bash(cd snark && python manage.py *)",
+      "Bash(cd snark && black . && isort .)",
+      "Bash(cd snark && flake8 .)",
+      "Bash(docker compose *)",
+      "Bash(curl -s http://localhost:8100/*)",
+      "Bash(curl -s http://localhost:8094/*)",
+      "Bash(git status*)",
+      "Bash(git log*)",
+      "Bash(git diff*)",
+      "Bash(git branch*)",
+      "Bash(git add *)",
+      "Bash(pip install*)",
+      "Bash(poetry install*)",
+      "Bash(poetry run *)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(git push --force*)",
+      "Bash(git reset --hard*)",
+      "Bash(docker compose down --volumes*)"
+    ]
+  }
+}
