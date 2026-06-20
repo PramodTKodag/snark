@@ -27,3 +27,6 @@ htmlcov/
 # Claude Code
 .claude/settings.local.json
 .claude/todos/
+
+# subagent-driven-development scratch
+.superpowers/

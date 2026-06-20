@@ -46,21 +46,3 @@ class ResponseLog(models.Model):
 
     def __str__(self):
         return f"{self.persona.slug} @ {self.created_at}"
-
-
-class ProviderConfig(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    provider_name = models.CharField(max_length=50, unique=True)
-    model_name = models.CharField(max_length=100)
-    api_key_env_var = models.CharField(max_length=100)
-    is_default = models.BooleanField(default=False)
-    settings = models.JSONField(default=dict)
-    is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        db_table = "provider_configs"
-
-    def __str__(self):
-        return f"{self.provider_name} ({self.model_name})"

@@ -14,7 +14,7 @@ Follow the existing pattern in `snark/wit/providers/`:
 
 3. **Init** — Export from `snark/wit/providers/__init__.py`
 
-4. **Seed command** — Add to `snark/wit/management/commands/seed_providers.py`
+4. **Registry + Settings** — Register the class in `providers/registry.py` `PROVIDER_CLASSES` and add `<NAME>_MODEL` / key env var settings
 
 5. **Environment** — Add the API key variable to `.env.example`
 
