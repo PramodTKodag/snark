@@ -3,6 +3,7 @@ import logging
 
 from django.core.cache import cache
 
+from .constants import ALLOWED_MOODS
 from .models import Persona, ResponseLog
 from .providers import ProviderRegistry
 from .providers.base import ContentFilterError, ProviderError
@@ -12,11 +13,10 @@ logger = logging.getLogger(__name__)
 PERSONA_CACHE_TTL = 3600  # 1 hour
 RESPONSE_CACHE_TTL = 300  # 5 minutes
 ANTI_REPETITION_COUNT = 10
-ALLOWED_MOODS = frozenset({
-    "sarcastic", "angry", "funny", "sad", "excited", "dramatic",
-    "passive-aggressive", "philosophical", "wholesome", "unhinged",
-    "dry", "chaotic", "chill", "spicy", "deadpan",
-})
+
+
+def persona_cache_key(slug: str) -> str:
+    return f"persona:{slug}"
 
 
 class PersonaNotFoundError(Exception):
@@ -25,7 +25,7 @@ class PersonaNotFoundError(Exception):
 
 class WitService:
     @staticmethod
-    def generate(slug: str, user_input: str = "", ip_address: str | None = None, mood: str | None = None) -> dict:
+    def generate(slug: str, user_input: str = "", mood: str | None = None) -> dict:
         if mood and mood not in ALLOWED_MOODS:
             mood = None
         persona = WitService._load_persona(slug)
@@ -49,7 +49,6 @@ class WitService:
             persona=persona,
             input_text=user_input,
             response_text=ai_response.text,
-            ip_address=ip_address,
             tokens_used=ai_response.tokens_used,
             latency_ms=ai_response.latency_ms,
             provider_name=ai_response.provider,
@@ -114,7 +113,7 @@ class WitService:
 
     @staticmethod
     def _load_persona(slug: str) -> Persona:
-        cache_key = f"persona:{slug}"
+        cache_key = persona_cache_key(slug)
         persona = cache.get(cache_key)
         if persona:
             return persona
@@ -133,9 +132,17 @@ class WitService:
             .values_list("response_text", flat=True)[:ANTI_REPETITION_COUNT]
         )
         rules_text = "\n".join(f"- {r}" for r in persona.rules) if persona.rules else ""
+        rules_block = f"\n\nRules:\n{rules_text}" if rules_text else ""
+
+        tone_descriptor = f"\n\nPERSONA TONE: {persona.tone}." if persona.tone else ""
+
         mood_text = ""
         if mood:
-            mood_text = f"\n\nMOOD OVERRIDE: Deliver your response in a {mood} tone. This takes priority over your default tone."
+            mood_text = (
+                f"\n\nMOOD OVERRIDE: Deliver your response in a {mood} tone. "
+                "This takes priority over your default tone."
+            )
+
         anti_rep = ""
         if recent:
             samples = list(recent)
@@ -144,11 +151,15 @@ class WitService:
                 "recent responses. Be completely original:\n"
                 + "\n".join(f'- "{s[:80]}"' for s in samples)
             )
+
         tone_guide = (
             "\n\nTONE: Use simple, everyday language. Short sentences. "
             "No fancy words, no jargon, no filler. Write like you're texting a friend."
         )
-        return f"{persona.system_prompt}{mood_text}{tone_guide}\n\nRules:\n{rules_text}{anti_rep}"
+        return (
+            f"{persona.system_prompt}{tone_descriptor}{mood_text}"
+            f"{tone_guide}{rules_block}{anti_rep}"
+        )
 
     @staticmethod
     def _response_cache_key(slug: str, user_input: str, mood: str | None = None) -> str:

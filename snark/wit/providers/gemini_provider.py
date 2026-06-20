@@ -4,43 +4,46 @@ import time
 
 from django.conf import settings
 
-from .base import AIProvider, AIResponse, ProviderError
+from .base import AIProvider, AIResponse, ContentFilterError, ProviderError
 
 logger = logging.getLogger(__name__)
 
+# Gemini candidate finish reasons that indicate a safety/content block.
+_GEMINI_SAFETY_FINISH = {"SAFETY", "PROHIBITED_CONTENT", "BLOCKLIST", "SPII", "IMAGE_SAFETY"}
+
 
 class GeminiProvider(AIProvider):
+    """Google Gemini provider (new google-genai SDK)."""
+
     def __init__(self, api_key: str | None = None, model: str | None = None):
+        self._client = None
+        self._unavailable_reason: str | None = None
+
         try:
             from google import genai
         except ImportError:
-            raise ProviderError(
-                "google-genai package not installed. Run: poetry add google-genai"
-            )
+            self._unavailable_reason = "google-genai package not installed"
+            logger.warning("GeminiProvider unavailable: %s", self._unavailable_reason)
+            return
 
         env_var = getattr(settings, "GEMINI_API_KEY_ENV_VAR", "GEMINI_API_KEY")
-        self._api_key = api_key or os.environ.get(env_var, "")
-        self._model_name = model or getattr(
-            settings, "AI_DEFAULT_MODEL", "gemini-2.0-flash"
-        )
+        self._api_key = api_key if api_key is not None else os.environ.get(env_var, "")
+        self._model_name = model or getattr(settings, "GEMINI_MODEL", "gemini-2.0-flash")
 
-        if self._api_key:
-            logger.info(
-                "GeminiProvider init: api_key=%s, model=%s",
-                "set",
-                self._model_name,
-            )
-            self._client = genai.Client(api_key=self._api_key)
-        else:
-            logger.warning(
-                "GeminiProvider init: NO API key found! env_var=%s",
-                env_var,
-            )
-            self._client = genai.Client(api_key="missing")
+        if not self._api_key:
+            self._unavailable_reason = f"no API key (set {env_var})"
+            logger.warning("GeminiProvider unavailable: %s", self._unavailable_reason)
+            return
+
+        self._client = genai.Client(api_key=self._api_key)
+        logger.info("GeminiProvider ready: model=%s", self._model_name)
 
     @property
     def name(self) -> str:
         return "gemini"
+
+    def is_available(self) -> bool:
+        return self._client is not None
 
     def generate(
         self,
@@ -49,6 +52,9 @@ class GeminiProvider(AIProvider):
         temperature: float = 0.9,
         max_tokens: int = 200,
     ) -> AIResponse:
+        if self._client is None:
+            raise ProviderError(f"Gemini provider unavailable: {self._unavailable_reason}")
+
         from google.genai import types
 
         start = time.monotonic()
@@ -66,13 +72,19 @@ class GeminiProvider(AIProvider):
             logger.error("Gemini API error [%s]: %s", type(exc).__name__, exc)
             raise ProviderError(f"Gemini API call failed: {exc}") from exc
 
+        self._raise_if_blocked(response)
+
         latency_ms = int((time.monotonic() - start) * 1000)
-        text = response.text if response.text else ""
+        try:
+            text = response.text or ""
+        except ValueError:
+            # `.text` raises when no usable candidate was returned (blocked output).
+            raise ContentFilterError("Gemini returned no usable content (blocked)")
+
         tokens_used = 0
         if response.usage_metadata:
-            tokens_used = (
-                (response.usage_metadata.prompt_token_count or 0)
-                + (response.usage_metadata.candidates_token_count or 0)
+            tokens_used = (response.usage_metadata.prompt_token_count or 0) + (
+                response.usage_metadata.candidates_token_count or 0
             )
 
         return AIResponse(
@@ -83,7 +95,24 @@ class GeminiProvider(AIProvider):
             latency_ms=latency_ms,
         )
 
+    @staticmethod
+    def _raise_if_blocked(response) -> None:
+        prompt_feedback = getattr(response, "prompt_feedback", None)
+        if prompt_feedback is not None and getattr(prompt_feedback, "block_reason", None):
+            reason = getattr(prompt_feedback.block_reason, "name", str(prompt_feedback.block_reason))
+            logger.warning("Gemini blocked prompt: %s", reason)
+            raise ContentFilterError(f"Gemini blocked the prompt: {reason}")
+
+        for candidate in (getattr(response, "candidates", None) or []):
+            finish = getattr(candidate, "finish_reason", None)
+            name = getattr(finish, "name", str(finish)) if finish is not None else None
+            if name in _GEMINI_SAFETY_FINISH:
+                logger.warning("Gemini safety finish_reason: %s", name)
+                raise ContentFilterError(f"Gemini safety block: {name}")
+
     def health_check(self) -> bool:
+        if self._client is None:
+            return False
         try:
             self._client.models.generate_content(
                 model=self._model_name,

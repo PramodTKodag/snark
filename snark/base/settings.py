@@ -19,6 +19,9 @@ ALLOWED_HOSTS = config(
     cast=lambda v: [h.strip() for h in v.split(",")],
 )
 
+# NOTE: django.contrib.auth/sessions/messages are retained intentionally — they
+# are required by the Django admin, which operators use to manage Persona rows.
+# The public API itself uses no authentication (DEFAULT_AUTHENTICATION_CLASSES=[]).
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -31,10 +34,12 @@ INSTALLED_APPS = [
     "rest_framework",
     "drf_spectacular",
     "drf_spectacular_sidecar",
+    "corsheaders",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -155,18 +160,23 @@ CACHES = {
     },
 }
 
-# AI Provider Configuration
+# AI Provider Configuration — settings are the single source of truth.
 AI_DEFAULT_PROVIDER = config("AI_DEFAULT_PROVIDER", default="groq")
-AI_DEFAULT_MODEL = config("AI_DEFAULT_MODEL", default="llama-3.3-70b-versatile")
+AI_PROVIDER_FALLBACK_ORDER = config(
+    "AI_PROVIDER_FALLBACK_ORDER",
+    default="groq,gemini,claude",
+    cast=lambda v: [p.strip() for p in v.split(",") if p.strip()],
+)
 AI_DEFAULT_MAX_TOKENS = config("AI_DEFAULT_MAX_TOKENS", default=300, cast=int)
 
-# Groq (default — free tier: 30 RPM, 14.4K RPD, very fast)
+# Per-provider model identifiers (real model ids; override via env per deployment).
+GROQ_MODEL = config("GROQ_MODEL", default="llama-3.3-70b-versatile")
+GEMINI_MODEL = config("GEMINI_MODEL", default="gemini-2.0-flash")
+CLAUDE_MODEL = config("CLAUDE_MODEL", default="claude-haiku-4-5-20251001")
+
+# Per-provider API key env var names.
 GROQ_API_KEY_ENV_VAR = config("GROQ_API_KEY_ENV_VAR", default="GROQ_API_KEY")
-
-# Gemini (fallback — free tier if available in your region)
 GEMINI_API_KEY_ENV_VAR = config("GEMINI_API_KEY_ENV_VAR", default="GEMINI_API_KEY")
-
-# Anthropic (fallback — requires paid credits)
 ANTHROPIC_API_KEY_ENV_VAR = config(
     "ANTHROPIC_API_KEY_ENV_VAR", default="ANTHROPIC_API_KEY"
 )
@@ -194,3 +204,14 @@ SPECTACULAR_SETTINGS = {
         "tryItOutEnabled": True,
     },
 }
+
+# CORS — public, read-only, no-credential API. Allow all origins by default;
+# restrict per deployment by setting CORS_ALLOW_ALL_ORIGINS=False and listing
+# CORS_ALLOWED_ORIGINS.
+CORS_ALLOW_ALL_ORIGINS = config("CORS_ALLOW_ALL_ORIGINS", default=True, cast=bool)
+CORS_ALLOWED_ORIGINS = config(
+    "CORS_ALLOWED_ORIGINS",
+    default="",
+    cast=lambda v: [o.strip() for o in v.split(",") if o.strip()],
+)
+CORS_ALLOW_CREDENTIALS = False
