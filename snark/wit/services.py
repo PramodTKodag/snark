@@ -29,7 +29,7 @@ class PersonaNotFoundError(Exception):
 
 class WitService:
     @staticmethod
-    def generate(slug: str, user_input: str = "", ip_address: str | None = None, mood: str | None = None) -> dict:
+    def generate(slug: str, user_input: str = "", mood: str | None = None) -> dict:
         if mood and mood not in ALLOWED_MOODS:
             mood = None
         persona = WitService._load_persona(slug)
@@ -53,7 +53,6 @@ class WitService:
             persona=persona,
             input_text=user_input,
             response_text=ai_response.text,
-            ip_address=ip_address,
             tokens_used=ai_response.tokens_used,
             latency_ms=ai_response.latency_ms,
             provider_name=ai_response.provider,

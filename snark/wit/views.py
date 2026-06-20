@@ -65,9 +65,6 @@ class BaseWitView(APIView):
 
     MAX_INPUT_LENGTH = 500
 
-    def get_client_ip(self, request):
-        return request.META.get("REMOTE_ADDR")
-
     def get_user_input(self, request, extra=""):
         q = request.query_params.get("q", "")[:self.MAX_INPUT_LENGTH]
         if extra and q:
@@ -80,7 +77,6 @@ class BaseWitView(APIView):
             result = WitService.generate(
                 slug=slug,
                 user_input=user_input or self.get_user_input(request),
-                ip_address=self.get_client_ip(request),
                 mood=mood,
             )
             return Response(result, status=status.HTTP_200_OK)
