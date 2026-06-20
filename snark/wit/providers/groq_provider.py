@@ -4,43 +4,43 @@ import time
 
 from django.conf import settings
 
-from .base import AIProvider, AIResponse, ProviderError
+from .base import AIProvider, AIResponse, ContentFilterError, ProviderError
 
 logger = logging.getLogger(__name__)
 
 
 class GroqProvider(AIProvider):
+    """Groq chat-completions provider (OpenAI-compatible API)."""
+
     def __init__(self, api_key: str | None = None, model: str | None = None):
+        self._client = None
+        self._unavailable_reason: str | None = None
+
         try:
             from groq import Groq
         except ImportError:
-            raise ProviderError(
-                "groq package not installed. Run: poetry add groq"
-            )
+            self._unavailable_reason = "groq package not installed"
+            logger.warning("GroqProvider unavailable: %s", self._unavailable_reason)
+            return
 
         env_var = getattr(settings, "GROQ_API_KEY_ENV_VAR", "GROQ_API_KEY")
-        self._api_key = api_key or os.environ.get(env_var, "")
-        self._model = model or getattr(
-            settings, "AI_DEFAULT_MODEL", "llama-3.3-70b-versatile"
-        )
+        self._api_key = api_key if api_key is not None else os.environ.get(env_var, "")
+        self._model = model or getattr(settings, "GROQ_MODEL", "llama-3.3-70b-versatile")
 
-        if self._api_key:
-            logger.info(
-                "GroqProvider init: api_key=%s, model=%s",
-                "set",
-                self._model,
-            )
-            self._client = Groq(api_key=self._api_key)
-        else:
-            logger.warning(
-                "GroqProvider init: NO API key found! env_var=%s",
-                env_var,
-            )
-            self._client = Groq(api_key="missing")
+        if not self._api_key:
+            self._unavailable_reason = f"no API key (set {env_var})"
+            logger.warning("GroqProvider unavailable: %s", self._unavailable_reason)
+            return
+
+        self._client = Groq(api_key=self._api_key)
+        logger.info("GroqProvider ready: model=%s", self._model)
 
     @property
     def name(self) -> str:
         return "groq"
+
+    def is_available(self) -> bool:
+        return self._client is not None
 
     def generate(
         self,
@@ -49,6 +49,9 @@ class GroqProvider(AIProvider):
         temperature: float = 0.9,
         max_tokens: int = 200,
     ) -> AIResponse:
+        if self._client is None:
+            raise ProviderError(f"Groq provider unavailable: {self._unavailable_reason}")
+
         start = time.monotonic()
         try:
             response = self._client.chat.completions.create(
@@ -64,8 +67,13 @@ class GroqProvider(AIProvider):
             logger.error("Groq API error [%s]: %s", type(exc).__name__, exc)
             raise ProviderError(f"Groq API call failed: {exc}") from exc
 
+        choice = response.choices[0] if response.choices else None
+        if choice is not None and getattr(choice, "finish_reason", None) == "content_filter":
+            logger.warning("Groq content filter triggered (finish_reason=content_filter)")
+            raise ContentFilterError("Groq content filter blocked the response")
+
         latency_ms = int((time.monotonic() - start) * 1000)
-        text = response.choices[0].message.content if response.choices else ""
+        text = choice.message.content if choice else ""
         tokens_used = 0
         if response.usage:
             tokens_used = (response.usage.prompt_tokens or 0) + (
@@ -81,6 +89,8 @@ class GroqProvider(AIProvider):
         )
 
     def health_check(self) -> bool:
+        if self._client is None:
+            return False
         try:
             self._client.chat.completions.create(
                 model=self._model,

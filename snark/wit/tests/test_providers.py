@@ -5,11 +5,13 @@ from django.test import override_settings
 
 from wit.providers.base import AIResponse, ProviderError
 from wit.providers.claude_provider import ClaudeProvider
+from wit.providers.gemini_provider import GeminiProvider
+from wit.providers.groq_provider import GroqProvider
 from wit.providers.registry import ProviderRegistry
 
 
 class TestClaudeProvider:
-    @patch("wit.providers.claude_provider.anthropic.Anthropic")
+    @patch("anthropic.Anthropic")
     def test_generate_returns_ai_response(self, mock_anthropic_cls):
         mock_client = MagicMock()
         mock_anthropic_cls.return_value = mock_client
@@ -27,7 +29,7 @@ class TestClaudeProvider:
         assert result.tokens_used == 30
         assert result.provider == "claude"
 
-    @patch("wit.providers.claude_provider.anthropic.Anthropic")
+    @patch("anthropic.Anthropic")
     def test_generate_raises_provider_error_on_api_failure(self, mock_anthropic_cls):
         import anthropic
 
@@ -62,7 +64,30 @@ class TestRegistrySettingsDriven:
         assert ProviderRegistry.get().name == "gemini"
 
     @override_settings(AI_PROVIDER_FALLBACK_ORDER=["claude", "groq", "gemini"])
-    def test_fallback_order_comes_from_settings(self):
+    @patch("wit.providers.groq_provider.GroqProvider.is_available", return_value=True)
+    @patch("wit.providers.gemini_provider.GeminiProvider.is_available", return_value=True)
+    @patch("wit.providers.claude_provider.ClaudeProvider.is_available", return_value=True)
+    def test_fallback_order_comes_from_settings(self, _claude_avail, _gemini_avail, _groq_avail):
         ProviderRegistry.reset()
         names = [p.name for p in ProviderRegistry.get_fallbacks(exclude="claude")]
         assert names == ["groq", "gemini"]
+
+
+class TestProviderAvailability:
+    def test_groq_unavailable_without_key(self):
+        provider = GroqProvider(api_key="")
+        assert provider.is_available() is False
+        with pytest.raises(ProviderError):
+            provider.generate("system", "user")
+
+    def test_gemini_unavailable_without_key(self):
+        provider = GeminiProvider(api_key="")
+        assert provider.is_available() is False
+        with pytest.raises(ProviderError):
+            provider.generate("system", "user")
+
+    def test_claude_unavailable_without_key(self):
+        provider = ClaudeProvider(api_key="")
+        assert provider.is_available() is False
+        with pytest.raises(ProviderError):
+            provider.generate("system", "user")
