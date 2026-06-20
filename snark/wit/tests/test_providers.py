@@ -45,6 +45,9 @@ class TestClaudeProvider:
 
 
 class TestProviderRegistry:
+    def setup_method(self):
+        ProviderRegistry.reset()
+
     def test_get_default_provider(self):
         provider = ProviderRegistry.get()
         assert provider.name == "groq"
@@ -127,7 +130,7 @@ class TestContentFilterDetection:
         blocked = MagicMock()
         blocked.prompt_feedback = None
         candidate = MagicMock()
-        candidate.finish_reason = MagicMock(name="finish")
+        candidate.finish_reason = MagicMock()
         candidate.finish_reason.name = "PROHIBITED_CONTENT"
         blocked.candidates = [candidate]
         mock_client.models.generate_content.return_value = blocked

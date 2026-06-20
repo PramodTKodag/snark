@@ -29,7 +29,7 @@ class TestWitService:
         assert result["persona"] == "The Refusal Artist"
         assert result["cached"] is False
         assert ResponseLog.objects.filter(persona=persona_no).count() == 1
-        assert not hasattr(ResponseLog.objects.first(), "ip_address")
+        assert "ip_address" not in [f.name for f in ResponseLog._meta.get_fields()]
 
     @patch("wit.services.cache")
     def test_generate_returns_cached(self, mock_cache, persona_no):
