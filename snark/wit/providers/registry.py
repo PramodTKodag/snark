@@ -1,58 +1,65 @@
 import logging
 
-from .base import AIProvider, ContentFilterError, ProviderError
+from django.conf import settings
+
+from .base import AIProvider
+from .claude_provider import ClaudeProvider
+from .gemini_provider import GeminiProvider
+from .groq_provider import GroqProvider
 
 logger = logging.getLogger(__name__)
 
+# All known provider implementations, keyed by their canonical name.
+PROVIDER_CLASSES: dict[str, type[AIProvider]] = {
+    "groq": GroqProvider,
+    "gemini": GeminiProvider,
+    "claude": ClaudeProvider,
+}
+
 
 class _ProviderRegistry:
-    def __init__(self):
-        self._providers: dict[str, type[AIProvider]] = {}
-        self._instances: dict[str, AIProvider] = {}
-        self._default: str | None = None
-        self._fallback_order: list[str] = []
+    """Resolves provider instances from Django settings.
 
-    def register(self, name: str, provider_class: type[AIProvider], default: bool = False):
-        self._providers[name] = provider_class
-        if default or self._default is None:
-            self._default = name
-        if name not in self._fallback_order:
-            self._fallback_order.append(name)
-        logger.debug("Registered AI provider: %s (default=%s)", name, default)
+    The default provider and fallback order live in settings (single source of
+    truth). Instances are created lazily and cached for the process lifetime.
+    """
+
+    def __init__(self):
+        self._instances: dict[str, AIProvider] = {}
+
+    def _default_name(self) -> str:
+        return getattr(settings, "AI_DEFAULT_PROVIDER", "groq")
+
+    def _fallback_order(self) -> list[str]:
+        return list(getattr(settings, "AI_PROVIDER_FALLBACK_ORDER", ["groq", "gemini", "claude"]))
 
     def get(self, name: str | None = None) -> AIProvider:
-        target = name or self._default
-        if target is None:
-            raise ValueError("No AI providers registered")
-        if target not in self._providers:
+        target = name or self._default_name()
+        if target not in PROVIDER_CLASSES:
             raise ValueError(f"Unknown AI provider: {target}")
         if target not in self._instances:
-            self._instances[target] = self._providers[target]()
+            self._instances[target] = PROVIDER_CLASSES[target]()
+            logger.debug("Instantiated AI provider: %s", target)
         return self._instances[target]
 
     def get_fallbacks(self, exclude: str | None = None) -> list[AIProvider]:
-        """Return providers in fallback order, excluding the named one."""
-        result = []
-        for name in self._fallback_order:
-            if name == exclude:
+        """Return available providers in configured fallback order, minus `exclude`."""
+        result: list[AIProvider] = []
+        for name in self._fallback_order():
+            if name == exclude or name not in PROVIDER_CLASSES:
                 continue
             try:
-                result.append(self.get(name))
-            except Exception:
+                provider = self.get(name)
+            except Exception as exc:  # construction should not normally raise
+                logger.warning("Could not instantiate provider %s: %s", name, exc)
                 continue
+            if provider.is_available():
+                result.append(provider)
         return result
 
     def reset(self):
+        """Clear cached instances (used in tests and after settings overrides)."""
         self._instances.clear()
 
 
 ProviderRegistry = _ProviderRegistry()
-
-# Auto-register providers — Groq is default (free tier), others as fallback
-from .claude_provider import ClaudeProvider  # noqa: E402
-from .gemini_provider import GeminiProvider  # noqa: E402
-from .groq_provider import GroqProvider  # noqa: E402
-
-ProviderRegistry.register("groq", GroqProvider, default=True)
-ProviderRegistry.register("gemini", GeminiProvider)
-ProviderRegistry.register("claude", ClaudeProvider)

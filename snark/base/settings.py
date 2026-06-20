@@ -155,18 +155,23 @@ CACHES = {
     },
 }
 
-# AI Provider Configuration
+# AI Provider Configuration — settings are the single source of truth.
 AI_DEFAULT_PROVIDER = config("AI_DEFAULT_PROVIDER", default="groq")
-AI_DEFAULT_MODEL = config("AI_DEFAULT_MODEL", default="llama-3.3-70b-versatile")
+AI_PROVIDER_FALLBACK_ORDER = config(
+    "AI_PROVIDER_FALLBACK_ORDER",
+    default="groq,gemini,claude",
+    cast=lambda v: [p.strip() for p in v.split(",") if p.strip()],
+)
 AI_DEFAULT_MAX_TOKENS = config("AI_DEFAULT_MAX_TOKENS", default=300, cast=int)
 
-# Groq (default — free tier: 30 RPM, 14.4K RPD, very fast)
+# Per-provider model identifiers (real model ids; override via env per deployment).
+GROQ_MODEL = config("GROQ_MODEL", default="llama-3.3-70b-versatile")
+GEMINI_MODEL = config("GEMINI_MODEL", default="gemini-2.0-flash")
+CLAUDE_MODEL = config("CLAUDE_MODEL", default="claude-haiku-4-5-20251001")
+
+# Per-provider API key env var names.
 GROQ_API_KEY_ENV_VAR = config("GROQ_API_KEY_ENV_VAR", default="GROQ_API_KEY")
-
-# Gemini (fallback — free tier if available in your region)
 GEMINI_API_KEY_ENV_VAR = config("GEMINI_API_KEY_ENV_VAR", default="GEMINI_API_KEY")
-
-# Anthropic (fallback — requires paid credits)
 ANTHROPIC_API_KEY_ENV_VAR = config(
     "ANTHROPIC_API_KEY_ENV_VAR", default="ANTHROPIC_API_KEY"
 )

@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from django.test import override_settings
 
 from wit.providers.base import AIResponse, ProviderError
 from wit.providers.claude_provider import ClaudeProvider
@@ -49,3 +50,19 @@ class TestProviderRegistry:
     def test_get_unknown_provider_raises(self):
         with pytest.raises(ValueError, match="Unknown AI provider"):
             ProviderRegistry.get("nonexistent")
+
+
+class TestRegistrySettingsDriven:
+    def teardown_method(self):
+        ProviderRegistry.reset()
+
+    @override_settings(AI_DEFAULT_PROVIDER="gemini")
+    def test_default_provider_comes_from_settings(self):
+        ProviderRegistry.reset()
+        assert ProviderRegistry.get().name == "gemini"
+
+    @override_settings(AI_PROVIDER_FALLBACK_ORDER=["claude", "groq", "gemini"])
+    def test_fallback_order_comes_from_settings(self):
+        ProviderRegistry.reset()
+        names = [p.name for p in ProviderRegistry.get_fallbacks(exclude="claude")]
+        assert names == ["groq", "gemini"]
