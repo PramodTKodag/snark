@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from .constants import ALLOWED_MOODS
+
 
 class WitResponseSerializer(serializers.Serializer):
     response = serializers.CharField()
@@ -7,8 +9,11 @@ class WitResponseSerializer(serializers.Serializer):
     cached = serializers.BooleanField()
 
 
-class WitInputSerializer(serializers.Serializer):
-    q = serializers.CharField(required=False, max_length=500, default="")
+class WitQuerySerializer(serializers.Serializer):
+    q = serializers.CharField(required=False, allow_blank=True, max_length=500, default="")
+    mood = serializers.ChoiceField(
+        choices=sorted(ALLOWED_MOODS), required=False, allow_blank=True
+    )
 
 
 class HealthResponseSerializer(serializers.Serializer):

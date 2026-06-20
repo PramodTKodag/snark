@@ -39,7 +39,7 @@ from .docs import (
     WORTH_IT_DESC,
 )
 from .providers.base import ProviderError
-from .serializers import HealthResponseSerializer, WitInputSerializer, WitResponseSerializer
+from .serializers import HealthResponseSerializer, WitQuerySerializer, WitResponseSerializer
 
 logger = logging.getLogger(__name__)
 from .services import PersonaNotFoundError, WitService
@@ -63,38 +63,39 @@ class BaseWitView(APIView):
     permission_classes = []
     throttle_classes = [WitAnonThrottle]
 
-    MAX_INPUT_LENGTH = 500
-
-    def get_user_input(self, request, extra=""):
-        q = request.query_params.get("q", "")[:self.MAX_INPUT_LENGTH]
-        if extra and q:
-            return f"{extra}: {q}"
-        return extra or q
-
-    def handle_generate(self, request, slug, user_input=""):
-        mood = request.query_params.get("mood", "").strip().lower() or None
-        try:
-            result = WitService.generate(
-                slug=slug,
-                user_input=user_input or self.get_user_input(request),
-                mood=mood,
+    def handle_generate(self, request, slug, user_input=None):
+        params = WitQuerySerializer(data=request.query_params)
+        if not params.is_valid():
+            return Response(
+                {
+                    "error": "Invalid query parameters",
+                    "code": "invalid_request",
+                    "details": params.errors,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
             )
+        query = params.validated_data.get("q", "")
+        mood = params.validated_data.get("mood") or None
+        effective_input = user_input if user_input is not None else query
+
+        try:
+            result = WitService.generate(slug=slug, user_input=effective_input, mood=mood)
             return Response(result, status=status.HTTP_200_OK)
         except PersonaNotFoundError:
             return Response(
-                {"error": f"Persona '{slug}' not found"},
+                {"error": f"Persona '{slug}' not found", "code": "persona_not_found"},
                 status=status.HTTP_404_NOT_FOUND,
             )
         except ProviderError as exc:
             logger.error("ProviderError for slug=%s: %s", slug, exc, exc_info=True)
             return Response(
-                {"error": "AI service temporarily unavailable"},
+                {"error": "AI service temporarily unavailable", "code": "provider_unavailable"},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except Exception as exc:
             logger.exception("Unexpected error for slug=%s: %s", slug, exc)
             return Response(
-                {"error": "Internal server error"},
+                {"error": "Internal server error", "code": "internal_error"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
