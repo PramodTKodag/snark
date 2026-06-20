@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from django.test import override_settings
 
-from wit.providers.base import AIResponse, ProviderError
+from wit.providers.base import AIResponse, ContentFilterError, ProviderError
 from wit.providers.claude_provider import ClaudeProvider
 from wit.providers.gemini_provider import GeminiProvider
 from wit.providers.groq_provider import GroqProvider
@@ -90,4 +90,48 @@ class TestProviderAvailability:
         provider = ClaudeProvider(api_key="")
         assert provider.is_available() is False
         with pytest.raises(ProviderError):
+            provider.generate("system", "user")
+
+
+class TestContentFilterDetection:
+    @patch("groq.Groq")
+    def test_groq_raises_content_filter_on_finish_reason(self, mock_groq_cls):
+        mock_client = MagicMock()
+        mock_groq_cls.return_value = mock_client
+        blocked = MagicMock()
+        blocked.choices = [MagicMock(finish_reason="content_filter")]
+        blocked.usage = None
+        mock_client.chat.completions.create.return_value = blocked
+
+        provider = GroqProvider(api_key="test-key", model="test-model")
+        with pytest.raises(ContentFilterError):
+            provider.generate("system", "user")
+
+    @patch("google.genai.Client")
+    def test_gemini_raises_content_filter_on_prompt_block(self, mock_client_cls):
+        mock_client = MagicMock()
+        mock_client_cls.return_value = mock_client
+        blocked = MagicMock()
+        blocked.prompt_feedback = MagicMock(block_reason="SAFETY")
+        blocked.candidates = []
+        mock_client.models.generate_content.return_value = blocked
+
+        provider = GeminiProvider(api_key="test-key", model="test-model")
+        with pytest.raises(ContentFilterError):
+            provider.generate("system", "user")
+
+    @patch("google.genai.Client")
+    def test_gemini_raises_content_filter_on_candidate_finish(self, mock_client_cls):
+        mock_client = MagicMock()
+        mock_client_cls.return_value = mock_client
+        blocked = MagicMock()
+        blocked.prompt_feedback = None
+        candidate = MagicMock()
+        candidate.finish_reason = MagicMock(name="finish")
+        candidate.finish_reason.name = "PROHIBITED_CONTENT"
+        blocked.candidates = [candidate]
+        mock_client.models.generate_content.return_value = blocked
+
+        provider = GeminiProvider(api_key="test-key", model="test-model")
+        with pytest.raises(ContentFilterError):
             provider.generate("system", "user")
