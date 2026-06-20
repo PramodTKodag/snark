@@ -61,7 +61,46 @@ def persona_no(db):
     )
 ```
 
-- [ ] **Step 2: Fix the view tests to hit real URLs**
+- [ ] **Step 2a: Replace class-level `@override_settings` with the pytest-django `settings` fixture**
+
+`test_views.py` decorates plain pytest classes with `@override_settings(...)`, which Django 5.2 rejects at collection time ("Only subclasses of Django SimpleTestCase can be decorated with override_settings"). Convert both test classes to override settings inside their autouse `setup` fixture instead.
+
+Remove the `from django.test import override_settings` import. Replace the `TestWitViews` class decorator + setup with:
+
+```python
+@pytest.mark.django_db
+class TestWitViews:
+    @pytest.fixture(autouse=True)
+    def setup(self, settings):
+        settings.CACHES = {
+            "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}
+        }
+        settings.REST_FRAMEWORK = {
+            "DEFAULT_THROTTLE_CLASSES": [],
+            "DEFAULT_THROTTLE_RATES": {},
+            "DEFAULT_AUTHENTICATION_CLASSES": [],
+            "DEFAULT_PERMISSION_CLASSES": [],
+            "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+        }
+        self.client = APIClient()
+```
+
+Replace the `TestHealthViews` class decorator + setup with:
+
+```python
+@pytest.mark.django_db
+class TestHealthViews:
+    @pytest.fixture(autouse=True)
+    def setup(self, settings):
+        settings.CACHES = {
+            "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}
+        }
+        self.client = APIClient()
+```
+
+> NOTE: `settings` here is the pytest-django fixture (mutating it auto-reverts after each test). It coexists with `@patch(...)` method decorators — the patched arg comes first, fixtures resolve by name.
+
+- [ ] **Step 2b: Fix the view tests to hit real URLs**
 
 In `snark/wit/tests/test_views.py`, correct the endpoint paths to the ones registered in `snark/wit/urls.py`. Replace the five wrong paths:
 
@@ -1720,17 +1759,16 @@ from unittest.mock import patch
 
 import pytest
 from django.core.cache import cache
-from django.test import override_settings
 from rest_framework.test import APIClient
 
 
 @pytest.mark.django_db
-@override_settings(
-    CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}},
-)
 class TestThrottle:
     @patch("wit.views.WitService.generate")
-    def test_anonymous_requests_throttled_after_limit(self, mock_gen):
+    def test_anonymous_requests_throttled_after_limit(self, mock_gen, settings):
+        settings.CACHES = {
+            "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}
+        }
         mock_gen.return_value = {"response": "x", "persona": "p", "cached": False}
         cache.clear()
         client = APIClient()
@@ -1741,7 +1779,7 @@ class TestThrottle:
         assert statuses[-1] == 429
 ```
 
-> NOTE: this test does NOT override `REST_FRAMEWORK` (unlike `test_views.py`), so the per-view `WitAnonThrottle` (50/hour) is active. LocMemCache backs the throttle counter; `cache.clear()` isolates the test.
+> NOTE: uses the pytest-django `settings` fixture (not the class-level `@override_settings` decorator, which Django 5.2 rejects on plain pytest classes). It does NOT override `REST_FRAMEWORK`, so the per-view `WitAnonThrottle` (50/hour) stays active. LocMemCache backs the throttle counter; `cache.clear()` isolates the test.
 
 - [ ] **Step 4: Run the throttle test**
 
