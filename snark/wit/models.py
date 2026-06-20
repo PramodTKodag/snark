@@ -30,7 +30,6 @@ class ResponseLog(models.Model):
     )
     input_text = models.TextField(blank=True, default="")
     response_text = models.TextField()
-    ip_address = models.GenericIPAddressField(null=True, blank=True)
     tokens_used = models.IntegerField(default=0)
     latency_ms = models.IntegerField(default=0)
     provider_name = models.CharField(max_length=50)
@@ -41,7 +40,6 @@ class ResponseLog(models.Model):
         db_table = "response_logs"
         indexes = [
             models.Index(fields=["persona", "-created_at"]),
-            models.Index(fields=["ip_address", "-created_at"]),
         ]
 
     def __str__(self):
