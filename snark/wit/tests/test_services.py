@@ -23,12 +23,13 @@ class TestWitService:
         )
         mock_registry.get.return_value = mock_provider
 
-        result = WitService.generate("no", ip_address="127.0.0.1")
+        result = WitService.generate("say-no")
 
         assert result["response"] == "No thanks"
         assert result["persona"] == "The Refusal Artist"
         assert result["cached"] is False
         assert ResponseLog.objects.filter(persona=persona_no).count() == 1
+        assert "ip_address" not in [f.name for f in ResponseLog._meta.get_fields()]
 
     @patch("wit.services.cache")
     def test_generate_returns_cached(self, mock_cache, persona_no):
@@ -36,7 +37,7 @@ class TestWitService:
             persona_no if key.startswith("persona:") else "Cached response"
         )
 
-        result = WitService.generate("no")
+        result = WitService.generate("say-no")
 
         assert result["cached"] is True
         assert result["response"] == "Cached response"

@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
+from .constants import ALLOWED_MOODS
 from .docs import (
     BUG_BLAME_DESC,
     CODE_REVIEW_DESC,
@@ -39,7 +40,7 @@ from .docs import (
     WORTH_IT_DESC,
 )
 from .providers.base import ProviderError
-from .serializers import HealthResponseSerializer, WitInputSerializer, WitResponseSerializer
+from .serializers import HealthResponseSerializer, WitQuerySerializer, WitResponseSerializer
 
 logger = logging.getLogger(__name__)
 from .services import PersonaNotFoundError, WitService
@@ -63,42 +64,39 @@ class BaseWitView(APIView):
     permission_classes = []
     throttle_classes = [WitAnonThrottle]
 
-    MAX_INPUT_LENGTH = 500
-
-    def get_client_ip(self, request):
-        return request.META.get("REMOTE_ADDR")
-
-    def get_user_input(self, request, extra=""):
-        q = request.query_params.get("q", "")[:self.MAX_INPUT_LENGTH]
-        if extra and q:
-            return f"{extra}: {q}"
-        return extra or q
-
-    def handle_generate(self, request, slug, user_input=""):
-        mood = request.query_params.get("mood", "").strip().lower() or None
-        try:
-            result = WitService.generate(
-                slug=slug,
-                user_input=user_input or self.get_user_input(request),
-                ip_address=self.get_client_ip(request),
-                mood=mood,
+    def handle_generate(self, request, slug, user_input=None):
+        params = WitQuerySerializer(data=request.query_params)
+        if not params.is_valid():
+            return Response(
+                {
+                    "error": "Invalid query parameters",
+                    "code": "invalid_request",
+                    "details": params.errors,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
             )
+        query = params.validated_data.get("q", "")
+        mood = params.validated_data.get("mood") or None
+        effective_input = user_input if user_input is not None else query
+
+        try:
+            result = WitService.generate(slug=slug, user_input=effective_input, mood=mood)
             return Response(result, status=status.HTTP_200_OK)
         except PersonaNotFoundError:
             return Response(
-                {"error": f"Persona '{slug}' not found"},
+                {"error": f"Persona '{slug}' not found", "code": "persona_not_found"},
                 status=status.HTTP_404_NOT_FOUND,
             )
         except ProviderError as exc:
             logger.error("ProviderError for slug=%s: %s", slug, exc, exc_info=True)
             return Response(
-                {"error": "AI service temporarily unavailable"},
+                {"error": "AI service temporarily unavailable", "code": "provider_unavailable"},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except Exception as exc:
             logger.exception("Unexpected error for slug=%s: %s", slug, exc)
             return Response(
-                {"error": "Internal server error"},
+                {"error": "Internal server error", "code": "internal_error"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
@@ -108,7 +106,7 @@ class BaseWitView(APIView):
 # ---------------------------------------------------------------------------
 
 _Q_PARAM = OpenApiParameter("q", str, OpenApiParameter.QUERY, required=False, description="Optional context for a personalized response")
-_MOOD_PARAM = OpenApiParameter("mood", str, OpenApiParameter.QUERY, required=False, description="Response mood (e.g. sarcastic, angry, funny, sad, excited, dramatic, passive-aggressive, philosophical, wholesome, unhinged)")
+_MOOD_PARAM = OpenApiParameter("mood", str, OpenApiParameter.QUERY, required=False, description="Response mood. One of: " + ", ".join(sorted(ALLOWED_MOODS)))
 
 
 # ---------------------------------------------------------------------------
@@ -216,7 +214,7 @@ class RoastView(BaseWitView):
         sanitized = re.sub(r"[^a-zA-Z0-9 ]", "", name)[:100].strip()
         if not sanitized:
             return Response(
-                {"error": "Name must contain at least one alphanumeric character"},
+                {"error": "Name must contain at least one alphanumeric character", "code": "invalid_request"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return self.handle_generate(request, "roast", user_input=sanitized)
@@ -234,7 +232,7 @@ class WorthItView(BaseWitView):
         q = request.query_params.get("q", "").strip()
         if not q:
             return Response(
-                {"error": "Query parameter 'q' is required"},
+                {"error": "Query parameter 'q' is required", "code": "invalid_request"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return self.handle_generate(request, "worth-it", user_input=q)
@@ -252,7 +250,7 @@ class ExplainLikeIm5View(BaseWitView):
         q = request.query_params.get("q", "").strip()
         if not q:
             return Response(
-                {"error": "Query parameter 'q' is required"},
+                {"error": "Query parameter 'q' is required", "code": "invalid_request"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return self.handle_generate(request, "explain-like-im-5", user_input=q)
@@ -326,7 +324,7 @@ class NameSuggestionView(BaseWitView):
         q = request.query_params.get("q", "").strip()
         if not q:
             return Response(
-                {"error": "Query parameter 'q' is required"},
+                {"error": "Query parameter 'q' is required", "code": "invalid_request"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return self.handle_generate(request, "name-suggestion", user_input=q)
@@ -383,7 +381,7 @@ class JargonTranslatorView(BaseWitView):
         q = request.query_params.get("q", "").strip()
         if not q:
             return Response(
-                {"error": "Query parameter 'q' is required"},
+                {"error": "Query parameter 'q' is required", "code": "invalid_request"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return self.handle_generate(request, "jargon-translator", user_input=q)
@@ -421,7 +419,7 @@ class TechBattleView(BaseWitView):
         q = request.query_params.get("q", "").strip()
         if not q:
             return Response(
-                {"error": "Query parameter 'q' is required — provide a matchup like 'coffee vs tea'"},
+                {"error": "Query parameter 'q' is required — provide a matchup like 'coffee vs tea'", "code": "invalid_request"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return self.handle_generate(request, "tech-battle", user_input=q)
@@ -442,7 +440,7 @@ class RateAnythingView(BaseWitView):
         q = request.query_params.get("q", "").strip()
         if not q:
             return Response(
-                {"error": "Query parameter 'q' is required — tell us what to rate"},
+                {"error": "Query parameter 'q' is required — tell us what to rate", "code": "invalid_request"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return self.handle_generate(request, "rate-anything", user_input=q)
@@ -475,7 +473,7 @@ class TldrView(BaseWitView):
         q = request.query_params.get("q", "").strip()
         if not q:
             return Response(
-                {"error": "Query parameter 'q' is required — describe what to summarize"},
+                {"error": "Query parameter 'q' is required — describe what to summarize", "code": "invalid_request"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return self.handle_generate(request, "tldr", user_input=q)
