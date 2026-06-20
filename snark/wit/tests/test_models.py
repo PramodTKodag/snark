@@ -6,14 +6,14 @@ from wit.models import Persona, ProviderConfig, ResponseLog
 @pytest.mark.django_db
 class TestPersona:
     def test_create_persona(self, persona_no):
-        assert persona_no.slug == "no"
+        assert persona_no.slug == "say-no"
         assert persona_no.name == "The Refusal Artist"
         assert persona_no.is_active is True
 
     def test_slug_unique(self, persona_no):
         with pytest.raises(Exception):
             Persona.objects.create(
-                slug="no",
+                slug="say-no",
                 name="Duplicate",
                 system_prompt="dup",
                 tone="test",

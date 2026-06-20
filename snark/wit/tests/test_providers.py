@@ -44,7 +44,7 @@ class TestClaudeProvider:
 class TestProviderRegistry:
     def test_get_default_provider(self):
         provider = ProviderRegistry.get()
-        assert provider.name == "claude"
+        assert provider.name == "groq"
 
     def test_get_unknown_provider_raises(self):
         with pytest.raises(ValueError, match="Unknown AI provider"):
