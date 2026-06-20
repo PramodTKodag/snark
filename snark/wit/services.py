@@ -3,6 +3,7 @@ import logging
 
 from django.core.cache import cache
 
+from .constants import ALLOWED_MOODS
 from .models import Persona, ResponseLog
 from .providers import ProviderRegistry
 from .providers.base import ContentFilterError, ProviderError
@@ -12,11 +13,6 @@ logger = logging.getLogger(__name__)
 PERSONA_CACHE_TTL = 3600  # 1 hour
 RESPONSE_CACHE_TTL = 300  # 5 minutes
 ANTI_REPETITION_COUNT = 10
-ALLOWED_MOODS = frozenset({
-    "sarcastic", "angry", "funny", "sad", "excited", "dramatic",
-    "passive-aggressive", "philosophical", "wholesome", "unhinged",
-    "dry", "chaotic", "chill", "spicy", "deadpan",
-})
 
 
 def persona_cache_key(slug: str) -> str:

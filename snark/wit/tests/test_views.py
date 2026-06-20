@@ -93,6 +93,34 @@ class TestWitViews:
         resp = self.client.get("/v1/wit/explain-like-im-5/")
         assert resp.status_code == 400
 
+    @patch("wit.views.WitService.generate")
+    def test_error_code_on_provider_failure(self, mock_gen):
+        from wit.providers.base import ProviderError
+        mock_gen.side_effect = ProviderError("boom")
+        resp = self.client.get("/v1/wit/say-no/")
+        assert resp.status_code == 503
+        assert resp.json()["code"] == "provider_unavailable"
+
+    @patch("wit.views.WitService.generate")
+    def test_error_code_on_persona_not_found(self, mock_gen):
+        from wit.services import PersonaNotFoundError
+        mock_gen.side_effect = PersonaNotFoundError("nope")
+        resp = self.client.get("/v1/wit/say-no/")
+        assert resp.status_code == 404
+        assert resp.json()["code"] == "persona_not_found"
+
+    def test_invalid_mood_is_rejected(self):
+        resp = self.client.get("/v1/wit/say-no/", {"mood": "not-a-real-mood"})
+        assert resp.status_code == 400
+        assert resp.json()["code"] == "invalid_request"
+
+    @patch("wit.views.WitService.generate")
+    def test_valid_mood_is_passed_through(self, mock_gen):
+        mock_gen.return_value = {"response": "x", "persona": "p", "cached": False}
+        resp = self.client.get("/v1/wit/say-no/", {"mood": "sarcastic"})
+        assert resp.status_code == 200
+        assert mock_gen.call_args.kwargs["mood"] == "sarcastic"
+
 
 @pytest.mark.django_db
 class TestHealthViews:
