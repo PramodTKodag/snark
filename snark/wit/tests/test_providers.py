@@ -67,7 +67,7 @@ class TestRegistrySettingsDriven:
     @patch("wit.providers.groq_provider.GroqProvider.is_available", return_value=True)
     @patch("wit.providers.gemini_provider.GeminiProvider.is_available", return_value=True)
     @patch("wit.providers.claude_provider.ClaudeProvider.is_available", return_value=True)
-    def test_fallback_order_comes_from_settings(self, _claude_avail, _gemini_avail, _groq_avail):
+    def test_fallback_order_comes_from_settings(self, mock_claude_available, mock_gemini_available, mock_groq_available):
         ProviderRegistry.reset()
         names = [p.name for p in ProviderRegistry.get_fallbacks(exclude="claude")]
         assert names == ["groq", "gemini"]
