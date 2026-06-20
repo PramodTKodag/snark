@@ -137,9 +137,17 @@ class WitService:
             .values_list("response_text", flat=True)[:ANTI_REPETITION_COUNT]
         )
         rules_text = "\n".join(f"- {r}" for r in persona.rules) if persona.rules else ""
+        rules_block = f"\n\nRules:\n{rules_text}" if rules_text else ""
+
+        tone_descriptor = f"\n\nPERSONA TONE: {persona.tone}." if persona.tone else ""
+
         mood_text = ""
         if mood:
-            mood_text = f"\n\nMOOD OVERRIDE: Deliver your response in a {mood} tone. This takes priority over your default tone."
+            mood_text = (
+                f"\n\nMOOD OVERRIDE: Deliver your response in a {mood} tone. "
+                "This takes priority over your default tone."
+            )
+
         anti_rep = ""
         if recent:
             samples = list(recent)
@@ -148,11 +156,15 @@ class WitService:
                 "recent responses. Be completely original:\n"
                 + "\n".join(f'- "{s[:80]}"' for s in samples)
             )
+
         tone_guide = (
             "\n\nTONE: Use simple, everyday language. Short sentences. "
             "No fancy words, no jargon, no filler. Write like you're texting a friend."
         )
-        return f"{persona.system_prompt}{mood_text}{tone_guide}\n\nRules:\n{rules_text}{anti_rep}"
+        return (
+            f"{persona.system_prompt}{tone_descriptor}{mood_text}"
+            f"{tone_guide}{rules_block}{anti_rep}"
+        )
 
     @staticmethod
     def _response_cache_key(slug: str, user_input: str, mood: str | None = None) -> str:
