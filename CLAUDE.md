@@ -27,7 +27,7 @@
 snark/
 ├── base/           # Django config, no business logic
 └── wit/
-    ├── models.py       # Persona, ResponseLog, ProviderConfig
+    ├── models.py       # Persona, ResponseLog
     ├── views.py        # 28 wit endpoints + 3 health endpoints
     ├── services.py     # WitService orchestrator (caching, anti-repetition, fallback)
     ├── serializers.py  # WitInputSerializer, WitResponseSerializer, HealthResponseSerializer
@@ -40,7 +40,7 @@ snark/
     │   ├── groq_provider.py
     │   ├── gemini_provider.py
     │   └── claude_provider.py
-    ├── management/     # seed_personas, seed_providers commands
+    ├── management/     # seed_personas command
     └── tests/          # test_models, test_views, test_services, test_providers, test_seed_command
 ```
 
@@ -63,7 +63,7 @@ docker compose --profile dev up --build
 | `make lint` | Flake8 linting |
 | `make migrate` | Run Django migrations |
 | `make makemigrations` | Generate new migrations |
-| `make seed` | Seed personas and providers |
+| `make seed` | Seed personas |
 | `make shell` | Django interactive shell |
 | `make up` | Start dev server |
 | `make down` | Stop all containers |
@@ -77,7 +77,7 @@ docker compose --profile dev up --build
 | `/lint` | Format + lint the codebase |
 | `/dev` | Start/stop the dev environment |
 | `/health` | Check running service health |
-| `/seed` | Seed database with personas & providers |
+| `/seed` | Seed database with personas |
 | `/add-endpoint` | Scaffold a new wit endpoint (guided) |
 | `/add-provider` | Add a new AI provider (guided) |
 | `/review` | Review current code changes |
@@ -102,7 +102,7 @@ Every wit endpoint follows the same 5-file pattern:
 1. **`providers/{name}_provider.py`** — Extend `AIProvider`, implement `generate()`
 2. **`providers/registry.py`** — Register in fallback chain
 3. **`providers/__init__.py`** — Export
-4. **`management/commands/seed_providers.py`** — Add DB config
+4. **`providers/registry.py`** — Register the class in `PROVIDER_CLASSES` and add `<NAME>_MODEL` / key env var settings
 5. **`.env.example`** — Document the API key env var
 
 ### WitService Flow

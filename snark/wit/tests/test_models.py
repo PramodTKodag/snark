@@ -1,6 +1,6 @@
 import pytest
 
-from wit.models import Persona, ProviderConfig, ResponseLog
+from wit.models import Persona, ResponseLog
 
 
 @pytest.mark.django_db
@@ -34,29 +34,3 @@ class TestResponseLog:
         )
         assert log.persona == persona_no
         assert log.response_text == "response"
-
-
-@pytest.mark.django_db
-class TestProviderConfig:
-    def test_create_provider_config(self):
-        config = ProviderConfig.objects.create(
-            provider_name="claude",
-            model_name="claude-haiku-4-20250414",
-            api_key_env_var="ANTHROPIC_API_KEY",
-            is_default=True,
-        )
-        assert config.provider_name == "claude"
-        assert config.is_default is True
-
-    def test_provider_name_unique(self):
-        ProviderConfig.objects.create(
-            provider_name="claude",
-            model_name="model-a",
-            api_key_env_var="KEY_A",
-        )
-        with pytest.raises(Exception):
-            ProviderConfig.objects.create(
-                provider_name="claude",
-                model_name="model-b",
-                api_key_env_var="KEY_B",
-            )

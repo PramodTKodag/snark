@@ -138,7 +138,7 @@ Example: `curl "http://localhost:8100/v1/wit/motivation/?mood=passive-aggressive
 snark/
 ├── base/              # Django config
 └── wit/
-    ├── models.py      # Persona, ResponseLog, ProviderConfig
+    ├── models.py      # Persona, ResponseLog
     ├── views.py       # API endpoints
     ├── services.py    # Orchestrator (caching, anti-repetition, fallback)
     ├── providers/     # AI provider abstraction
@@ -147,7 +147,7 @@ snark/
     │   ├── groq_provider.py
     │   ├── gemini_provider.py
     │   └── claude_provider.py
-    └── management/    # seed_personas, seed_providers commands
+    └── management/    # seed_personas command
 ```
 
 ### Provider Fallback

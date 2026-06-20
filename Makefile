@@ -33,8 +33,8 @@ migrate: ## Run Django migrations
 makemigrations: ## Generate Django migrations
 	cd snark && python manage.py makemigrations wit
 
-seed: ## Seed personas and providers
-	cd snark && python manage.py seed_personas && python manage.py seed_providers
+seed: ## Seed personas
+	cd snark && python manage.py seed_personas
 
 shell: ## Django shell
 	cd snark && python manage.py shell
