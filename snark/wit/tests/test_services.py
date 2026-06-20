@@ -23,7 +23,7 @@ class TestWitService:
         )
         mock_registry.get.return_value = mock_provider
 
-        result = WitService.generate("no", ip_address="127.0.0.1")
+        result = WitService.generate("say-no", ip_address="127.0.0.1")
 
         assert result["response"] == "No thanks"
         assert result["persona"] == "The Refusal Artist"
@@ -36,7 +36,7 @@ class TestWitService:
             persona_no if key.startswith("persona:") else "Cached response"
         )
 
-        result = WitService.generate("no")
+        result = WitService.generate("say-no")
 
         assert result["cached"] is True
         assert result["response"] == "Cached response"

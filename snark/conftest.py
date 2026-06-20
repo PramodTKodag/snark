@@ -1,5 +1,4 @@
 import pytest
-from django.test import override_settings
 from rest_framework.test import APIClient
 
 from wit.models import Persona
@@ -13,7 +12,7 @@ def api_client():
 @pytest.fixture
 def persona_no(db):
     return Persona.objects.create(
-        slug="no",
+        slug="say-no",
         name="The Refusal Artist",
         system_prompt="You are a creative refusal generator.",
         rules=["Keep it short", "Be creative"],
