@@ -31,10 +31,12 @@ INSTALLED_APPS = [
     "rest_framework",
     "drf_spectacular",
     "drf_spectacular_sidecar",
+    "corsheaders",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -199,3 +201,14 @@ SPECTACULAR_SETTINGS = {
         "tryItOutEnabled": True,
     },
 }
+
+# CORS — public, read-only, no-credential API. Allow all origins by default;
+# restrict per deployment by setting CORS_ALLOW_ALL_ORIGINS=False and listing
+# CORS_ALLOWED_ORIGINS.
+CORS_ALLOW_ALL_ORIGINS = config("CORS_ALLOW_ALL_ORIGINS", default=True, cast=bool)
+CORS_ALLOWED_ORIGINS = config(
+    "CORS_ALLOWED_ORIGINS",
+    default="",
+    cast=lambda v: [o.strip() for o in v.split(",") if o.strip()],
+)
+CORS_ALLOW_CREDENTIALS = False
