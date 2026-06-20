@@ -19,6 +19,9 @@ ALLOWED_HOSTS = config(
     cast=lambda v: [h.strip() for h in v.split(",")],
 )
 
+# NOTE: django.contrib.auth/sessions/messages are retained intentionally — they
+# are required by the Django admin, which operators use to manage Persona rows.
+# The public API itself uses no authentication (DEFAULT_AUTHENTICATION_CLASSES=[]).
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
