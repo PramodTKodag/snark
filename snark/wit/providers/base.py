@@ -38,3 +38,7 @@ class AIProvider(ABC):
     @abstractmethod
     def health_check(self) -> bool:
         ...
+
+    def is_available(self) -> bool:
+        """Whether this provider is configured and usable. Overridden per provider."""
+        return True
