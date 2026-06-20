@@ -1,0 +1,44 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]
+
+jobs:
+  review:
+    if: |
+      (github.event_name == 'pull_request') ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request &&
+       contains(github.event.comment.body, '@claude'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          model: "claude-sonnet-4-20250514"
+          timeout_minutes: 10
+          trigger_phrase: "@claude"
+          direct_prompt: |
+            Review this PR for the snark project (Sarcasm as a Service API).
+
+            Check for:
+            1. Provider pattern — AI calls must go through WitService, never direct SDK calls in views
+            2. Rate limiting — all public endpoints must use AnonRateThrottle
+            3. No hardcoded secrets or API keys
+            4. Proper error handling for provider failures
+            5. Tests for new functionality
+            6. Code style consistency (black/isort/flake8)
+            7. Persona seed data uses update_or_create (idempotent)
+
+            Be concise. Focus on issues, not praise. Use the project's CLAUDE.md for full context.

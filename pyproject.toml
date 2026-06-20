@@ -1,0 +1,93 @@
+[tool.poetry]
+name = "snark"
+version = "0.1.0"
+description = "Sarcasm as a Service — AI-Powered Humor & Utility API"
+authors = ["Pramod Kodag <pramodkodag.dev@gmail.com>"]
+license = "AGPL-3.0-or-later"
+readme = "README.md"
+homepage = "https://github.com/PramodTKodag/snark"
+repository = "https://github.com/PramodTKodag/snark"
+keywords = ["ai", "humor", "api", "sarcasm", "llm"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: Django",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+]
+
+[tool.poetry.dependencies]
+python = ">=3.12,<4.0"
+django = "^5.1.4"
+djangorestframework = "^3.15.1"
+drf-spectacular = "^0.28.0"
+drf-spectacular-sidecar = "^2025.7.1"
+psycopg2-binary = "^2.9.10"
+redis = "^5.0.1"
+django-redis = "^5.4.0"
+django-ratelimit = "^4.1.0"
+whitenoise = "^6.7.0"
+gunicorn = "^23.0.0"
+anthropic = "^0.42.0"
+google-genai = "^1.0.0"
+groq = "^0.13.0"
+python-decouple = "^3.8"
+httpx = "^0.27.0"
+
+[tool.poetry.group.dev.dependencies]
+black = "^24.0.0"
+isort = "^5.13.0"
+flake8 = "^7.0.0"
+pytest = "^8.0.0"
+pytest-django = "^4.8.0"
+pytest-cov = "^4.1.0"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "base.settings"
+python_files = ["test_*.py", "*_test.py"]
+pythonpath = ["snark"]
+addopts = "-v --tb=short"
+
+[[tool.poetry.packages]]
+include = "snark"
+
+[tool.black]
+line-length = 88
+target-version = ['py312']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  \.eggs
+  | \.git
+  | \.mypy_cache
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+line_length = 88
+skip_glob = ["*/migrations/*"]
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E203", "W503", "E501"]
+exclude = [
+    ".git",
+    "__pycache__",
+    "*/migrations/*",
+    "*/venv/*",
+    "build",
+    "dist"
+]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
