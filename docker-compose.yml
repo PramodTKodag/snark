@@ -1,9 +1,53 @@
 networks:
-  snark.test:
-    name: snark.test
-    external: true
+  snark:
+    name: snark
+    driver: bridge
+
+volumes:
+  snark-postgres-data:
+  snark-redis-data:
 
 services:
+  snark-postgres:
+    image: postgres:16-alpine
+    container_name: snark-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-snark}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - snark-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-snark}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    profiles:
+      - dev
+      - prod
+    networks:
+      - snark
+
+  snark-redis-cache:
+    image: redis:7-alpine
+    container_name: snark-redis-cache
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - snark-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    profiles:
+      - dev
+      - prod
+    networks:
+      - snark
+
   wit-dev:
     build: .
     container_name: snark
@@ -13,6 +57,11 @@ services:
       - .:/app
     env_file:
       - ./.env
+    depends_on:
+      snark-postgres:
+        condition: service_healthy
+      snark-redis-cache:
+        condition: service_healthy
     command: >
       sh -c "cd snark &&
              python manage.py migrate &&
@@ -21,9 +70,7 @@ services:
     profiles:
       - dev
     networks:
-      snark.test:
-        aliases:
-          - wit.snark.test
+      - snark
 
   wit-prod:
     build: .
@@ -32,6 +79,11 @@ services:
       - "${WIT_PORT:-8100}:${INTERNAL_PORT:-8094}"
     env_file:
       - ./.env
+    depends_on:
+      snark-postgres:
+        condition: service_healthy
+      snark-redis-cache:
+        condition: service_healthy
     command: >
       sh -c "cd snark &&
              python manage.py migrate &&
@@ -41,6 +93,4 @@ services:
     profiles:
       - prod
     networks:
-      snark.test:
-        aliases:
-          - wit.snark.test
+      - snark
