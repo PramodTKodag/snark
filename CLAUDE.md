@@ -181,8 +181,9 @@ Tests use Django's test client. Provider tests mock the AI SDK calls. The `conft
 | `/v1/wit/honest-changelog/` | GET | — | Real changelog |
 | `/v1/wit/debug-story/` | GET | — | Debug war story |
 | `/v1/wit/proverb/` | GET | — | Dev proverb |
+| `/v1/wit/health/live/` | GET | — | Liveness probe |
+| `/v1/wit/health/ready/` | GET | — | Readiness probe |
 | `/v1/wit/health/status/` | GET | — | Full health check |
-| `/v1/wit/health/ping/` | GET | — | Simple ping |
 | `/v1/wit/swagger/` | GET | — | Swagger UI |
 
 **Version**: 0.1.0
