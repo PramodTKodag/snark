@@ -19,6 +19,14 @@ ALLOWED_HOSTS = config(
     cast=lambda v: [h.strip() for h in v.split(",")],
 )
 
+# Public API mount point — single source of truth for the URL prefix.
+# Change API_VERSION or API_NAMESPACE here to re-version or re-namespace every
+# route, the OpenAPI schema path, and the static URL at once. API_PREFIX has no
+# surrounding slashes (e.g. "v1/wit"); add them at each use site as needed.
+API_VERSION = "v1"
+API_NAMESPACE = "wit"
+API_PREFIX = f"{API_VERSION}/{API_NAMESPACE}"
+
 # NOTE: django.contrib.auth/sessions/messages are retained intentionally — they
 # are required by the Django admin, which operators use to manage Persona rows.
 # The public API itself uses no authentication (DEFAULT_AUTHENTICATION_CLASSES=[]).
@@ -119,7 +127,7 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = "/v1/wit/static/"
+STATIC_URL = f"/{API_PREFIX}/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 STORAGES = {
@@ -210,7 +218,7 @@ SPECTACULAR_SETTINGS = {
     "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
     "REDOC_DIST": "SIDECAR",
     "SERVERS": [],
-    "SCHEMA_PATH_PREFIX": "/v1/wit/",
+    "SCHEMA_PATH_PREFIX": f"/{API_PREFIX}/",
     "TAGS": [
         {"name": "Wit", "description": "AI-powered humor endpoints"},
         {"name": "Health", "description": "Service health probes"},
