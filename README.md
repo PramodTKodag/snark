@@ -208,6 +208,7 @@ snark is free and open source under the AGPL-3.0 license. Running the public API
 
 - ❤️ [Sponsor on GitHub](https://github.com/sponsors/PramodTKodag)
 - ☕ [Buy Me a Coffee](https://buymeacoffee.com/thesilentknight)
+- ☕ [Ko-fi](https://ko-fi.com/thesilentknight)
 
 Sponsorship helps keep the public instance running and funds new endpoints.
 
