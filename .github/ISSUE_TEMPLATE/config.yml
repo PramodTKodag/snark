@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/PramodTKodag/snark/security/advisories/new
+    about: Please report security issues privately — do not open a public issue. See SECURITY.md.
+  - name: Question or idea
+    url: https://github.com/PramodTKodag/snark/discussions
+    about: Ask questions and share ideas in Discussions.
