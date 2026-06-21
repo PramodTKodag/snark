@@ -1,7 +1,5 @@
 import pytest
 from django.core.cache import cache
-
-from wit.models import Persona
 from wit.services import persona_cache_key
 
 

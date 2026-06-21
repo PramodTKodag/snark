@@ -40,10 +40,14 @@ from .docs import (
     WORTH_IT_DESC,
 )
 from .providers.base import ProviderError
-from .serializers import HealthResponseSerializer, WitQuerySerializer, WitResponseSerializer
+from .serializers import (
+    HealthResponseSerializer,
+    WitQuerySerializer,
+    WitResponseSerializer,
+)
+from .services import PersonaNotFoundError, WitService
 
 logger = logging.getLogger(__name__)
-from .services import PersonaNotFoundError, WitService
 
 
 def _get_version():
@@ -80,7 +84,9 @@ class BaseWitView(APIView):
         effective_input = user_input if user_input is not None else query
 
         try:
-            result = WitService.generate(slug=slug, user_input=effective_input, mood=mood)
+            result = WitService.generate(
+                slug=slug, user_input=effective_input, mood=mood
+            )
             return Response(result, status=status.HTTP_200_OK)
         except PersonaNotFoundError:
             return Response(
@@ -90,7 +96,10 @@ class BaseWitView(APIView):
         except ProviderError as exc:
             logger.error("ProviderError for slug=%s: %s", slug, exc, exc_info=True)
             return Response(
-                {"error": "AI service temporarily unavailable", "code": "provider_unavailable"},
+                {
+                    "error": "AI service temporarily unavailable",
+                    "code": "provider_unavailable",
+                },
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         except Exception as exc:
@@ -105,8 +114,20 @@ class BaseWitView(APIView):
 # Shared OpenAPI parameters
 # ---------------------------------------------------------------------------
 
-_Q_PARAM = OpenApiParameter("q", str, OpenApiParameter.QUERY, required=False, description="Optional context for a personalized response")
-_MOOD_PARAM = OpenApiParameter("mood", str, OpenApiParameter.QUERY, required=False, description="Response mood. One of: " + ", ".join(sorted(ALLOWED_MOODS)))
+_Q_PARAM = OpenApiParameter(
+    "q",
+    str,
+    OpenApiParameter.QUERY,
+    required=False,
+    description="Optional context for a personalized response",
+)
+_MOOD_PARAM = OpenApiParameter(
+    "mood",
+    str,
+    OpenApiParameter.QUERY,
+    required=False,
+    description="Response mood. One of: " + ", ".join(sorted(ALLOWED_MOODS)),
+)
 
 
 # ---------------------------------------------------------------------------
@@ -214,7 +235,10 @@ class RoastView(BaseWitView):
         sanitized = re.sub(r"[^a-zA-Z0-9 ]", "", name)[:100].strip()
         if not sanitized:
             return Response(
-                {"error": "Name must contain at least one alphanumeric character", "code": "invalid_request"},
+                {
+                    "error": "Name must contain at least one alphanumeric character",
+                    "code": "invalid_request",
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return self.handle_generate(request, "roast", user_input=sanitized)
@@ -224,7 +248,16 @@ class RoastView(BaseWitView):
     tags=["Wit"],
     summary="Is it worth it? Decision oracle",
     description=WORTH_IT_DESC,
-    parameters=[OpenApiParameter("q", str, OpenApiParameter.QUERY, required=True, description="What to evaluate"), _MOOD_PARAM],
+    parameters=[
+        OpenApiParameter(
+            "q",
+            str,
+            OpenApiParameter.QUERY,
+            required=True,
+            description="What to evaluate",
+        ),
+        _MOOD_PARAM,
+    ],
     responses={200: WitResponseSerializer},
 )
 class WorthItView(BaseWitView):
@@ -242,7 +275,16 @@ class WorthItView(BaseWitView):
     tags=["Wit"],
     summary="Explain like I'm 5",
     description=EXPLAIN_LIKE_IM_5_DESC,
-    parameters=[OpenApiParameter("q", str, OpenApiParameter.QUERY, required=True, description="Topic to explain"), _MOOD_PARAM],
+    parameters=[
+        OpenApiParameter(
+            "q",
+            str,
+            OpenApiParameter.QUERY,
+            required=True,
+            description="Topic to explain",
+        ),
+        _MOOD_PARAM,
+    ],
     responses={200: WitResponseSerializer},
 )
 class ExplainLikeIm5View(BaseWitView):
@@ -314,7 +356,13 @@ class FortuneCookieView(BaseWitView):
     summary="Absurd name suggestions for anything",
     description=NAME_SUGGESTION_DESC,
     parameters=[
-        OpenApiParameter("q", str, OpenApiParameter.QUERY, required=True, description="What you need to name"),
+        OpenApiParameter(
+            "q",
+            str,
+            OpenApiParameter.QUERY,
+            required=True,
+            description="What you need to name",
+        ),
         _MOOD_PARAM,
     ],
     responses={200: WitResponseSerializer},
@@ -371,7 +419,13 @@ class MeetingExcuseView(BaseWitView):
     summary="Insider vs outsider jargon translator",
     description=JARGON_TRANSLATOR_DESC,
     parameters=[
-        OpenApiParameter("q", str, OpenApiParameter.QUERY, required=True, description="Phrase to translate"),
+        OpenApiParameter(
+            "q",
+            str,
+            OpenApiParameter.QUERY,
+            required=True,
+            description="Phrase to translate",
+        ),
         _MOOD_PARAM,
     ],
     responses={200: WitResponseSerializer},
@@ -409,7 +463,13 @@ class IncidentPostmortemView(BaseWitView):
     summary="Battle judge — anything vs anything",
     description=TECH_BATTLE_DESC,
     parameters=[
-        OpenApiParameter("q", str, OpenApiParameter.QUERY, required=True, description="Matchup (e.g. 'coffee vs tea')"),
+        OpenApiParameter(
+            "q",
+            str,
+            OpenApiParameter.QUERY,
+            required=True,
+            description="Matchup (e.g. 'coffee vs tea')",
+        ),
         _MOOD_PARAM,
     ],
     responses={200: WitResponseSerializer},
@@ -419,7 +479,10 @@ class TechBattleView(BaseWitView):
         q = request.query_params.get("q", "").strip()
         if not q:
             return Response(
-                {"error": "Query parameter 'q' is required — provide a matchup like 'coffee vs tea'", "code": "invalid_request"},
+                {
+                    "error": "Query parameter 'q' is required — provide a matchup like 'coffee vs tea'",
+                    "code": "invalid_request",
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return self.handle_generate(request, "tech-battle", user_input=q)
@@ -430,7 +493,9 @@ class TechBattleView(BaseWitView):
     summary="Rate anything 1-10",
     description=RATE_ANYTHING_DESC,
     parameters=[
-        OpenApiParameter("q", str, OpenApiParameter.QUERY, required=True, description="What to rate"),
+        OpenApiParameter(
+            "q", str, OpenApiParameter.QUERY, required=True, description="What to rate"
+        ),
         _MOOD_PARAM,
     ],
     responses={200: WitResponseSerializer},
@@ -440,7 +505,10 @@ class RateAnythingView(BaseWitView):
         q = request.query_params.get("q", "").strip()
         if not q:
             return Response(
-                {"error": "Query parameter 'q' is required — tell us what to rate", "code": "invalid_request"},
+                {
+                    "error": "Query parameter 'q' is required — tell us what to rate",
+                    "code": "invalid_request",
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return self.handle_generate(request, "rate-anything", user_input=q)
@@ -463,7 +531,13 @@ class HoroscopeView(BaseWitView):
     summary="Brutally honest TL;DR",
     description=TLDR_DESC,
     parameters=[
-        OpenApiParameter("q", str, OpenApiParameter.QUERY, required=True, description="What to summarize"),
+        OpenApiParameter(
+            "q",
+            str,
+            OpenApiParameter.QUERY,
+            required=True,
+            description="What to summarize",
+        ),
         _MOOD_PARAM,
     ],
     responses={200: WitResponseSerializer},
@@ -473,7 +547,10 @@ class TldrView(BaseWitView):
         q = request.query_params.get("q", "").strip()
         if not q:
             return Response(
-                {"error": "Query parameter 'q' is required — describe what to summarize", "code": "invalid_request"},
+                {
+                    "error": "Query parameter 'q' is required — describe what to summarize",
+                    "code": "invalid_request",
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return self.handle_generate(request, "tldr", user_input=q)
@@ -530,6 +607,7 @@ class ProverbView(BaseWitView):
 # ---------------------------------------------------------------------------
 # Health Endpoints
 # ---------------------------------------------------------------------------
+
 
 @extend_schema(tags=["Health"], summary="Liveness probe")
 class LivenessView(APIView):
@@ -598,5 +676,9 @@ class HealthStatusView(APIView):
                 "version": _get_version(),
                 "components": components,
             },
-            status=status.HTTP_200_OK if all_healthy else status.HTTP_503_SERVICE_UNAVAILABLE,
+            status=(
+                status.HTTP_200_OK
+                if all_healthy
+                else status.HTTP_503_SERVICE_UNAVAILABLE
+            ),
         )

@@ -1,6 +1,5 @@
 import pytest
 from django.core.management import call_command
-
 from wit.management.commands.seed_personas import PERSONAS
 from wit.models import Persona
 

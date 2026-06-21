@@ -1,7 +1,6 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from wit.models import ResponseLog
 from wit.providers.base import AIResponse
 from wit.services import PersonaNotFoundError, WitService

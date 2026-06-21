@@ -1,5 +1,4 @@
 import pytest
-
 from wit.models import Persona, ResponseLog
 
 

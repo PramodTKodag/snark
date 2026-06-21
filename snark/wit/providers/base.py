@@ -22,8 +22,7 @@ class ContentFilterError(ProviderError):
 class AIProvider(ABC):
     @property
     @abstractmethod
-    def name(self) -> str:
-        ...
+    def name(self) -> str: ...
 
     @abstractmethod
     def generate(
@@ -32,12 +31,10 @@ class AIProvider(ABC):
         user_prompt: str,
         temperature: float = 0.9,
         max_tokens: int = 200,
-    ) -> AIResponse:
-        ...
+    ) -> AIResponse: ...
 
     @abstractmethod
-    def health_check(self) -> bool:
-        ...
+    def health_check(self) -> bool: ...
 
     def is_available(self) -> bool:
         """Whether this provider is configured and usable. Overridden per provider."""

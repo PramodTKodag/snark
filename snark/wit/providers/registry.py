@@ -31,7 +31,11 @@ class _ProviderRegistry:
         return getattr(settings, "AI_DEFAULT_PROVIDER", "groq")
 
     def _fallback_order(self) -> list[str]:
-        return list(getattr(settings, "AI_PROVIDER_FALLBACK_ORDER", ["groq", "gemini", "claude"]))
+        return list(
+            getattr(
+                settings, "AI_PROVIDER_FALLBACK_ORDER", ["groq", "gemini", "claude"]
+            )
+        )
 
     def get(self, name: str | None = None) -> AIProvider:
         target = name or self._default_name()

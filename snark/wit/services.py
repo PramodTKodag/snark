@@ -92,7 +92,9 @@ class WitService:
                     max_tokens=max_tokens,
                 )
             except (ContentFilterError, ProviderError):
-                logger.warning("Softened retry failed on %s, trying fallbacks", primary.name)
+                logger.warning(
+                    "Softened retry failed on %s, trying fallbacks", primary.name
+                )
         except ProviderError:
             logger.warning("Provider %s failed, trying fallbacks", primary.name)
 
