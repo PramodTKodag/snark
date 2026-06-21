@@ -24,9 +24,12 @@ htmlcov/
 .coverage.*
 .pytest_cache/
 
-# Claude Code
-.claude/settings.local.json
-.claude/todos/
+# Local AI-assistant tooling — kept out of the public repo
+.claude/
+CLAUDE.md
+
+# Internal planning docs
+docs/superpowers/
 
 # subagent-driven-development scratch
 .superpowers/
