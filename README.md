@@ -2,6 +2,7 @@
 
 **Sarcasm as a Service** — An AI-powered humor and utility API that generates unique, witty responses on every request.
 
+[![CI](https://github.com/PramodTKodag/snark/actions/workflows/ci.yml/badge.svg)](https://github.com/PramodTKodag/snark/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![Django 5.1](https://img.shields.io/badge/django-5.1-green.svg)](https://www.djangoproject.com/)
@@ -15,15 +16,15 @@ Snark is a public REST API that serves AI-generated humor — roasts, excuses, c
 - **Zero authentication** — fully public, no API keys needed
 - **Multi-provider** — supports Groq (free), Gemini, and Claude with automatic fallback
 - **Rate limited** — 50 requests/hour per IP
-- **Self-hosted** — run it on your own infrastructure
+- **One-command stack** — `docker compose up` brings the API, PostgreSQL, and Redis together; nothing external to provision
+- **Self-hosted** — run the whole thing on your own infrastructure
 
 ## Quick Start
 
 ### Prerequisites
 
-- Python 3.12+
-- Docker & Docker Compose
-- PostgreSQL and Redis (or use Docker)
+- Docker & Docker Compose — the only requirement; PostgreSQL and Redis are bundled into the stack
+- Python 3.12+ — optional, only for running tests or tooling outside Docker
 
 ### 1. Clone and configure
 
@@ -63,6 +64,21 @@ curl "http://localhost:8100/v1/wit/explain-like-im-5/?q=quantum+physics"
 # Generate an honest git commit message
 curl http://localhost:8100/v1/wit/commit-message/
 ```
+
+### Example response
+
+Every endpoint returns the same compact JSON shape:
+
+```jsonc
+// GET /v1/wit/proverb/
+{
+  "response": "He who checks phone during conversation is lost in a sea of distraction, says the Scroll of Digital Wisdom.",
+  "persona": "The Ancient Sage",
+  "cached": false
+}
+```
+
+`response` is the generated text, `persona` is the voice that produced it, and `cached` tells you whether it came from the 5-minute response cache.
 
 ## API Endpoints
 
