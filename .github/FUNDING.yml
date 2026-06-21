@@ -5,11 +5,12 @@
 # approved for the GitHub Sponsors program (https://github.com/sponsors).
 
 github: [PramodTKodag]
-buy_me_a_coffee: thesilentknight
-ko_fi: thesilentknight
 
-# Optional — uncomment any you set up accounts for:
+# Optional — uncomment any you set up accounts for. Buy Me a Coffee and Ko-fi
+# are intentionally omitted: their payouts run through Stripe, which has no
+# India payout support. Use `custom` for an India-friendly link (e.g. Razorpay
+# or a UPI page) if GitHub Sponsors payout is unavailable.
 # open_collective: your-collective-slug
 # liberapay: your-liberapay-username
 # polar: your-polar-username
-# custom: ["https://www.paypal.me/yourname"]
+# custom: ["https://your-razorpay-or-upi-page"]
