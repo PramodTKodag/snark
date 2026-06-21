@@ -132,8 +132,8 @@ All endpoints are `GET` requests under `/v1/wit/`. Most accept optional `?q=` an
 Add `?mood=` to any endpoint to change the tone:
 
 ```
-sarcastic, angry, funny, sad, excited, dramatic,
-passive-aggressive, philosophical, wholesome, unhinged
+sarcastic, angry, funny, sad, excited, dramatic, passive-aggressive,
+philosophical, wholesome, unhinged, dry, chaotic, chill, spicy, deadpan
 ```
 
 Example: `curl "http://localhost:8100/v1/wit/motivation/?mood=passive-aggressive"`
@@ -232,7 +232,7 @@ To report a security vulnerability, please email pramodkodag.dev@gmail.com. Do *
 
 ## License
 
-Copyright (C) 2025 Pramod Kodag
+Copyright (C) 2026 Pramod Kodag
 
 This project is licensed under the [GNU Affero General Public License v3.0](LICENSE). This means:
 
