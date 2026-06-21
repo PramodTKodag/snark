@@ -211,6 +211,10 @@ All configuration is via environment variables. See `.env.example` for the full 
 | `ANTHROPIC_API_KEY` | — | Anthropic API key (optional, paid) |
 | `POSTGRES_DB` | `snark` | PostgreSQL database name |
 | `REDIS_DB` | `9` | Redis database number |
+| `USE_PROXY_SSL_HEADER` | `False` | Trust `X-Forwarded-Proto` when behind a TLS-terminating proxy |
+| `NUM_PROXIES` | — | Trusted proxy count, so per-IP rate limiting reads the real client IP from `X-Forwarded-For` |
+
+> **Behind a reverse proxy?** Set `USE_PROXY_SSL_HEADER=True` and `NUM_PROXIES=<n>` so HTTPS detection and per-IP rate limiting work correctly. Leave both unset for direct connections.
 
 ## Contributing
 
