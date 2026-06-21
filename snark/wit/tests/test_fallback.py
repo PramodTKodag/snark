@@ -1,13 +1,14 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from wit.providers.base import AIResponse, ContentFilterError, ProviderError
 from wit.services import WitService
 
 
 def _response(provider):
-    return AIResponse(text="ok", tokens_used=1, model="m", provider=provider, latency_ms=1)
+    return AIResponse(
+        text="ok", tokens_used=1, model="m", provider=provider, latency_ms=1
+    )
 
 
 class TestGenerateWithFallback:
@@ -27,7 +28,10 @@ class TestGenerateWithFallback:
     def test_content_filter_triggers_softened_retry(self, mock_registry):
         primary = MagicMock()
         primary.name = "groq"
-        primary.generate.side_effect = [ContentFilterError("blocked"), _response("groq")]
+        primary.generate.side_effect = [
+            ContentFilterError("blocked"),
+            _response("groq"),
+        ]
         mock_registry.get.return_value = primary
 
         result = WitService._generate_with_fallback("sys", "user", 0.9, 80)

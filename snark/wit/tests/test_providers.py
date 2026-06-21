@@ -2,7 +2,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from django.test import override_settings
-
 from wit.providers.base import AIResponse, ContentFilterError, ProviderError
 from wit.providers.claude_provider import ClaudeProvider
 from wit.providers.gemini_provider import GeminiProvider
@@ -68,9 +67,15 @@ class TestRegistrySettingsDriven:
 
     @override_settings(AI_PROVIDER_FALLBACK_ORDER=["claude", "groq", "gemini"])
     @patch("wit.providers.groq_provider.GroqProvider.is_available", return_value=True)
-    @patch("wit.providers.gemini_provider.GeminiProvider.is_available", return_value=True)
-    @patch("wit.providers.claude_provider.ClaudeProvider.is_available", return_value=True)
-    def test_fallback_order_comes_from_settings(self, mock_claude_available, mock_gemini_available, mock_groq_available):
+    @patch(
+        "wit.providers.gemini_provider.GeminiProvider.is_available", return_value=True
+    )
+    @patch(
+        "wit.providers.claude_provider.ClaudeProvider.is_available", return_value=True
+    )
+    def test_fallback_order_comes_from_settings(
+        self, mock_claude_available, mock_gemini_available, mock_groq_available
+    ):
         ProviderRegistry.reset()
         names = [p.name for p in ProviderRegistry.get_fallbacks(exclude="claude")]
         assert names == ["groq", "gemini"]

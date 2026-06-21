@@ -25,7 +25,9 @@ class GroqProvider(AIProvider):
 
         env_var = getattr(settings, "GROQ_API_KEY_ENV_VAR", "GROQ_API_KEY")
         self._api_key = api_key if api_key is not None else os.environ.get(env_var, "")
-        self._model = model or getattr(settings, "GROQ_MODEL", "llama-3.3-70b-versatile")
+        self._model = model or getattr(
+            settings, "GROQ_MODEL", "llama-3.3-70b-versatile"
+        )
 
         if not self._api_key:
             self._unavailable_reason = f"no API key (set {env_var})"
@@ -50,7 +52,9 @@ class GroqProvider(AIProvider):
         max_tokens: int = 200,
     ) -> AIResponse:
         if self._client is None:
-            raise ProviderError(f"Groq provider unavailable: {self._unavailable_reason}")
+            raise ProviderError(
+                f"Groq provider unavailable: {self._unavailable_reason}"
+            )
 
         start = time.monotonic()
         try:
@@ -68,8 +72,13 @@ class GroqProvider(AIProvider):
             raise ProviderError(f"Groq API call failed: {exc}") from exc
 
         choice = response.choices[0] if response.choices else None
-        if choice is not None and getattr(choice, "finish_reason", None) == "content_filter":
-            logger.warning("Groq content filter triggered (finish_reason=content_filter)")
+        if (
+            choice is not None
+            and getattr(choice, "finish_reason", None) == "content_filter"
+        ):
+            logger.warning(
+                "Groq content filter triggered (finish_reason=content_filter)"
+            )
             raise ContentFilterError("Groq content filter blocked the response")
 
         latency_ms = int((time.monotonic() - start) * 1000)
