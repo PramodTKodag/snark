@@ -13,7 +13,13 @@ class PersonaAdmin(admin.ModelAdmin):
 
 @admin.register(ResponseLog)
 class ResponseLogAdmin(admin.ModelAdmin):
-    list_display = ("persona", "tokens_used", "latency_ms", "provider_name", "created_at")
+    list_display = (
+        "persona",
+        "tokens_used",
+        "latency_ms",
+        "provider_name",
+        "created_at",
+    )
     list_filter = ("provider_name", "persona")
     readonly_fields = ("id", "created_at")
     date_hierarchy = "created_at"

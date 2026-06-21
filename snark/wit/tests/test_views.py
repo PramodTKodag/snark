@@ -22,50 +22,82 @@ class TestWitViews:
 
     @patch("wit.views.WitService.generate")
     def test_no_endpoint(self, mock_gen):
-        mock_gen.return_value = {"response": "Nope", "persona": "The Refusal Artist", "cached": False}
+        mock_gen.return_value = {
+            "response": "Nope",
+            "persona": "The Refusal Artist",
+            "cached": False,
+        }
         resp = self.client.get("/v1/wit/say-no/")
         assert resp.status_code == 200
         assert resp.json()["response"] == "Nope"
 
     @patch("wit.views.WitService.generate")
     def test_excuse_endpoint(self, mock_gen):
-        mock_gen.return_value = {"response": "Busy", "persona": "The Excuse Machine", "cached": False}
+        mock_gen.return_value = {
+            "response": "Busy",
+            "persona": "The Excuse Machine",
+            "cached": False,
+        }
         resp = self.client.get("/v1/wit/random-excuse/")
         assert resp.status_code == 200
 
     @patch("wit.views.WitService.generate")
     def test_corporate_endpoint(self, mock_gen):
-        mock_gen.return_value = {"response": "Synergy", "persona": "The Synergy Maximizer", "cached": False}
+        mock_gen.return_value = {
+            "response": "Synergy",
+            "persona": "The Synergy Maximizer",
+            "cached": False,
+        }
         resp = self.client.get("/v1/wit/corporate-jargon/")
         assert resp.status_code == 200
 
     @patch("wit.views.WitService.generate")
     def test_commit_endpoint(self, mock_gen):
-        mock_gen.return_value = {"response": "fix: stuff", "persona": "The Honest Committer", "cached": False}
+        mock_gen.return_value = {
+            "response": "fix: stuff",
+            "persona": "The Honest Committer",
+            "cached": False,
+        }
         resp = self.client.get("/v1/wit/commit-message/")
         assert resp.status_code == 200
 
     @patch("wit.views.WitService.generate")
     def test_hot_take_endpoint(self, mock_gen):
-        mock_gen.return_value = {"response": "Hot take", "persona": "The Hot Take Machine", "cached": False}
+        mock_gen.return_value = {
+            "response": "Hot take",
+            "persona": "The Hot Take Machine",
+            "cached": False,
+        }
         resp = self.client.get("/v1/wit/hot-take/")
         assert resp.status_code == 200
 
     @patch("wit.views.WitService.generate")
     def test_compliment_endpoint(self, mock_gen):
-        mock_gen.return_value = {"response": "Great job", "persona": "The Wholesome Bot", "cached": False}
+        mock_gen.return_value = {
+            "response": "Great job",
+            "persona": "The Wholesome Bot",
+            "cached": False,
+        }
         resp = self.client.get("/v1/wit/compliment/")
         assert resp.status_code == 200
 
     @patch("wit.views.WitService.generate")
     def test_blame_endpoint(self, mock_gen):
-        mock_gen.return_value = {"response": "It was npm", "persona": "The Blame Allocator", "cached": False}
+        mock_gen.return_value = {
+            "response": "It was npm",
+            "persona": "The Blame Allocator",
+            "cached": False,
+        }
         resp = self.client.get("/v1/wit/bug-blame/")
         assert resp.status_code == 200
 
     @patch("wit.views.WitService.generate")
     def test_roast_endpoint(self, mock_gen):
-        mock_gen.return_value = {"response": "Roasted", "persona": "The Friendly Roaster", "cached": False}
+        mock_gen.return_value = {
+            "response": "Roasted",
+            "persona": "The Friendly Roaster",
+            "cached": False,
+        }
         resp = self.client.get("/v1/wit/roast/Pramod/")
         assert resp.status_code == 200
 
@@ -76,7 +108,11 @@ class TestWitViews:
 
     @patch("wit.views.WitService.generate")
     def test_worth_it_endpoint(self, mock_gen):
-        mock_gen.return_value = {"response": "VERDICT: YES", "persona": "The Decision Oracle", "cached": False}
+        mock_gen.return_value = {
+            "response": "VERDICT: YES",
+            "persona": "The Decision Oracle",
+            "cached": False,
+        }
         resp = self.client.get("/v1/wit/worth-it/", {"q": "learning Rust"})
         assert resp.status_code == 200
 
@@ -87,7 +123,11 @@ class TestWitViews:
 
     @patch("wit.views.WitService.generate")
     def test_eli5_endpoint(self, mock_gen):
-        mock_gen.return_value = {"response": "Like cookies", "persona": "The Kindergarten Professor", "cached": False}
+        mock_gen.return_value = {
+            "response": "Like cookies",
+            "persona": "The Kindergarten Professor",
+            "cached": False,
+        }
         resp = self.client.get("/v1/wit/explain-like-im-5/", {"q": "kubernetes"})
         assert resp.status_code == 200
 
@@ -99,6 +139,7 @@ class TestWitViews:
     @patch("wit.views.WitService.generate")
     def test_error_code_on_provider_failure(self, mock_gen):
         from wit.providers.base import ProviderError
+
         mock_gen.side_effect = ProviderError("boom")
         resp = self.client.get("/v1/wit/say-no/")
         assert resp.status_code == 503
@@ -107,6 +148,7 @@ class TestWitViews:
     @patch("wit.views.WitService.generate")
     def test_error_code_on_persona_not_found(self, mock_gen):
         from wit.services import PersonaNotFoundError
+
         mock_gen.side_effect = PersonaNotFoundError("nope")
         resp = self.client.get("/v1/wit/say-no/")
         assert resp.status_code == 404

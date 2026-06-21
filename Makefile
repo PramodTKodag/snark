@@ -25,7 +25,7 @@ format: ## Format code with black + isort
 	cd snark && black . && isort .
 
 lint: ## Run flake8 linter
-	cd snark && flake8 .
+	flake8 snark
 
 migrate: ## Run Django migrations
 	cd snark && python manage.py migrate
