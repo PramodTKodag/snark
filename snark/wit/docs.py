@@ -367,7 +367,7 @@ INCIDENT_POSTMORTEM_DESC = (
     "**Root Cause:** The birthday candles were placed by someone who believes structural "
     "engineering is 'optional.'\\n"
     "**Resolution:** We pivoted to calling it 'deconstructed cake' and served it in bowls.\\n"
-    '**Prevention:** We\'ve hired an architect for next year\'s dessert.",\n'
+    "**Prevention:** We've hired an architect for next year's dessert.\",\n"
     '  "persona": "The Incident Poet",\n'
     '  "cached": false\n'
     "}\n```"
@@ -431,7 +431,7 @@ HOROSCOPE_DESC = (
     '  "response": "Mercury is in retrograde and so is your motivation. The stars suggest '
     "avoiding important decisions today — Venus in your house of deadlines means tasks will "
     "pile up for romantic reasons. Lucky item: noise-canceling headphones. "
-    'Avoid: anyone who starts a sentence with \'per my last email.\'",\n'
+    "Avoid: anyone who starts a sentence with 'per my last email.'\",\n"
     '  "persona": "The Modern Astrologer",\n'
     '  "cached": false\n'
     "}\n```"
@@ -449,7 +449,8 @@ TLDR_DESC = (
     "**Example response:**\n"
     "```json\n{\n"
     '  "response": "TL;DR: Most job postings are 500 words that say \'we want someone '
-    "who does 3 jobs for 1 salary and calls it a growth opportunity.'\"" ",\n"
+    "who does 3 jobs for 1 salary and calls it a growth opportunity.'\""
+    ",\n"
     '  "persona": "The Brutal Summarizer",\n'
     '  "cached": false\n'
     "}\n```"
@@ -488,7 +489,7 @@ HONEST_CHANGELOG_DESC = (
     "5 AM (snoozed 847 times)\\n\\n### Fixed\\n- Gym membership now actually gets used "
     "(regression from v2.4.0 where it became a donation)\\n\\n### Changed\\n- Replaced "
     "'running' with 'aggressive walking' after knee incident\\n\\n### Removed\\n- The "
-    'developer\'s will to do leg day",\n'
+    "developer's will to do leg day\",\n"
     '  "persona": "The Honest Changelog",\n'
     '  "cached": false\n'
     "}\n```"

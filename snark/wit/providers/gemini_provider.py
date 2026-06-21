@@ -9,7 +9,13 @@ from .base import AIProvider, AIResponse, ContentFilterError, ProviderError
 logger = logging.getLogger(__name__)
 
 # Gemini candidate finish reasons that indicate a safety/content block.
-_GEMINI_SAFETY_FINISH = {"SAFETY", "PROHIBITED_CONTENT", "BLOCKLIST", "SPII", "IMAGE_SAFETY"}
+_GEMINI_SAFETY_FINISH = {
+    "SAFETY",
+    "PROHIBITED_CONTENT",
+    "BLOCKLIST",
+    "SPII",
+    "IMAGE_SAFETY",
+}
 
 
 class GeminiProvider(AIProvider):
@@ -28,7 +34,9 @@ class GeminiProvider(AIProvider):
 
         env_var = getattr(settings, "GEMINI_API_KEY_ENV_VAR", "GEMINI_API_KEY")
         self._api_key = api_key if api_key is not None else os.environ.get(env_var, "")
-        self._model_name = model or getattr(settings, "GEMINI_MODEL", "gemini-2.0-flash")
+        self._model_name = model or getattr(
+            settings, "GEMINI_MODEL", "gemini-2.0-flash"
+        )
 
         if not self._api_key:
             self._unavailable_reason = f"no API key (set {env_var})"
@@ -53,7 +61,9 @@ class GeminiProvider(AIProvider):
         max_tokens: int = 200,
     ) -> AIResponse:
         if self._client is None:
-            raise ProviderError(f"Gemini provider unavailable: {self._unavailable_reason}")
+            raise ProviderError(
+                f"Gemini provider unavailable: {self._unavailable_reason}"
+            )
 
         from google.genai import types
 
@@ -98,12 +108,16 @@ class GeminiProvider(AIProvider):
     @staticmethod
     def _raise_if_blocked(response) -> None:
         prompt_feedback = getattr(response, "prompt_feedback", None)
-        if prompt_feedback is not None and getattr(prompt_feedback, "block_reason", None):
-            reason = getattr(prompt_feedback.block_reason, "name", str(prompt_feedback.block_reason))
+        if prompt_feedback is not None and getattr(
+            prompt_feedback, "block_reason", None
+        ):
+            reason = getattr(
+                prompt_feedback.block_reason, "name", str(prompt_feedback.block_reason)
+            )
             logger.warning("Gemini blocked prompt: %s", reason)
             raise ContentFilterError(f"Gemini blocked the prompt: {reason}")
 
-        for candidate in (getattr(response, "candidates", None) or []):
+        for candidate in getattr(response, "candidates", None) or []:
             finish = getattr(candidate, "finish_reason", None)
             name = getattr(finish, "name", str(finish)) if finish is not None else None
             if name in _GEMINI_SAFETY_FINISH:
