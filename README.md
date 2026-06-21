@@ -1,11 +1,17 @@
-# Snark
+<p align="center">
+  <img src="assets/snark-logo.png" alt="snark logo" width="160">
+</p>
 
-**Sarcasm as a Service** — An AI-powered humor and utility API that generates unique, witty responses on every request.
+<h1 align="center">Snark</h1>
 
-[![CI](https://github.com/PramodTKodag/snark/actions/workflows/ci.yml/badge.svg)](https://github.com/PramodTKodag/snark/actions/workflows/ci.yml)
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![Django 5.1](https://img.shields.io/badge/django-5.1-green.svg)](https://www.djangoproject.com/)
+<p align="center"><strong>Sarcasm as a Service</strong> — an AI-powered humor and utility API that generates a unique, witty response on every request.</p>
+
+<p align="center">
+  <a href="https://github.com/PramodTKodag/snark/actions/workflows/ci.yml"><img src="https://github.com/PramodTKodag/snark/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://www.gnu.org/licenses/agpl-3.0"><img src="https://img.shields.io/badge/License-AGPL_v3-blue.svg" alt="License: AGPL v3"></a>
+  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.12+-blue.svg" alt="Python 3.12+"></a>
+  <a href="https://www.djangoproject.com/"><img src="https://img.shields.io/badge/django-5.1-green.svg" alt="Django 5.1"></a>
+</p>
 
 ---
 
