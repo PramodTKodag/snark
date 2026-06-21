@@ -1,0 +1,25 @@
+name: Issue triage
+
+# Flag every newly opened issue as needing triage. The label is removed
+# manually once the issue has been reviewed, so unreviewed issues are visible
+# at a glance.
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['needs-triage'],
+            });
