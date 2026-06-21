@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.urls import include, path
 from drf_spectacular.views import (
     SpectacularAPIView,
@@ -6,20 +7,25 @@ from drf_spectacular.views import (
 )
 from wit.views import HealthStatusView, LivenessView, ReadinessView
 
+# All routes hang off the single API mount point defined in settings, so the
+# version/namespace can be changed in one place (settings.API_PREFIX).
+_PREFIX = f"{settings.API_PREFIX}/"
+
 urlpatterns = [
-    path("v1/wit/health/live/", LivenessView.as_view(), name="health-live"),
-    path("v1/wit/health/ready/", ReadinessView.as_view(), name="health-ready"),
-    path("v1/wit/health/status/", HealthStatusView.as_view(), name="health-status"),
-    path("v1/wit/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path(f"{_PREFIX}health/live/", LivenessView.as_view(), name="health-live"),
+    path(f"{_PREFIX}health/ready/", ReadinessView.as_view(), name="health-ready"),
+    path(f"{_PREFIX}health/status/", HealthStatusView.as_view(), name="health-status"),
+    path(f"{_PREFIX}schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
-        "v1/wit/swagger/",
+        f"{_PREFIX}swagger/",
         SpectacularSwaggerView.as_view(url_name="schema"),
         name="swagger-ui",
     ),
     path(
-        "v1/wit/redoc/",
+        f"{_PREFIX}redoc/",
         SpectacularRedocView.as_view(url_name="schema"),
         name="redoc",
     ),
-    path("v1/wit/", include("wit.urls")),
+    # Business endpoints live in wit/urls.py — add new wit paths there.
+    path(_PREFIX, include("wit.urls")),
 ]
