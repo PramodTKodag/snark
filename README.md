@@ -202,6 +202,14 @@ Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before
 
 By contributing, you agree to the [Contributor License Agreement](CLA.md).
 
+## Support
+
+snark is free and open source under the AGPL-3.0 license. Running the public API costs real money — every response is a live LLM call. If it made you laugh or saved you time, consider sponsoring its development:
+
+- ❤️ [Sponsor on GitHub](https://github.com/sponsors/PramodTKodag)
+
+Sponsorship helps keep the public instance running and funds new endpoints.
+
 ## Security
 
 To report a security vulnerability, please email pramodkodag.dev@gmail.com. Do **not** open a public GitHub issue. See [SECURITY.md](SECURITY.md) for details.
