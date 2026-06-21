@@ -26,7 +26,9 @@ class ClaudeProvider(AIProvider):
         self._anthropic = anthropic
         env_var = getattr(settings, "ANTHROPIC_API_KEY_ENV_VAR", "ANTHROPIC_API_KEY")
         self._api_key = api_key if api_key is not None else os.environ.get(env_var, "")
-        self._model = model or getattr(settings, "CLAUDE_MODEL", "claude-haiku-4-5-20251001")
+        self._model = model or getattr(
+            settings, "CLAUDE_MODEL", "claude-haiku-4-5-20251001"
+        )
 
         if not self._api_key:
             self._unavailable_reason = f"no API key (set {env_var})"
@@ -51,7 +53,9 @@ class ClaudeProvider(AIProvider):
         max_tokens: int = 200,
     ) -> AIResponse:
         if self._client is None:
-            raise ProviderError(f"Claude provider unavailable: {self._unavailable_reason}")
+            raise ProviderError(
+                f"Claude provider unavailable: {self._unavailable_reason}"
+            )
 
         anthropic = self._anthropic
         start = time.monotonic()
@@ -66,14 +70,18 @@ class ClaudeProvider(AIProvider):
         except anthropic.BadRequestError as exc:
             if "content filtering" in str(exc).lower() or "blocked" in str(exc).lower():
                 logger.warning("Claude content filter triggered: %s", exc)
-                raise ContentFilterError(f"Claude content filter blocked response: {exc}") from exc
+                raise ContentFilterError(
+                    f"Claude content filter blocked response: {exc}"
+                ) from exc
             logger.error("Claude bad request [%s]: %s", type(exc).__name__, exc)
             raise ProviderError(f"Claude API call failed: {exc}") from exc
         except anthropic.APIError as exc:
             logger.error("Claude API error [%s]: %s", type(exc).__name__, exc)
             raise ProviderError(f"Claude API call failed: {exc}") from exc
         except Exception as exc:
-            logger.error("Claude provider unexpected error [%s]: %s", type(exc).__name__, exc)
+            logger.error(
+                "Claude provider unexpected error [%s]: %s", type(exc).__name__, exc
+            )
             raise ProviderError(f"Claude provider error: {exc}") from exc
 
         latency_ms = int((time.monotonic() - start) * 1000)

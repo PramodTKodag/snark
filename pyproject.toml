@@ -75,17 +75,7 @@ use_parentheses = true
 line_length = 88
 skip_glob = ["*/migrations/*"]
 
-[tool.flake8]
-max-line-length = 88
-extend-ignore = ["E203", "W503", "E501"]
-exclude = [
-    ".git",
-    "__pycache__",
-    "*/migrations/*",
-    "*/venv/*",
-    "build",
-    "dist"
-]
+# flake8 config lives in .flake8 (flake8 does not read pyproject.toml).
 
 [build-system]
 requires = ["poetry-core"]

@@ -1,0 +1,13 @@
+[flake8]
+# flake8 does not read pyproject.toml, so its config lives here.
+# Aligned with black (88-char lines); ignore the rules black is incompatible
+# with (E203, W503) and line-length (E501) since black owns formatting.
+max-line-length = 88
+extend-ignore = E203, W503, E501
+exclude =
+    .git,
+    __pycache__,
+    */migrations/*,
+    */venv/*,
+    build,
+    dist

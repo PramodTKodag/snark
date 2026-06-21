@@ -10,7 +10,9 @@ class WitResponseSerializer(serializers.Serializer):
 
 
 class WitQuerySerializer(serializers.Serializer):
-    q = serializers.CharField(required=False, allow_blank=True, max_length=500, default="")
+    q = serializers.CharField(
+        required=False, allow_blank=True, max_length=500, default=""
+    )
     mood = serializers.ChoiceField(
         choices=sorted(ALLOWED_MOODS), required=False, allow_blank=True
     )

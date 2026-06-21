@@ -4,7 +4,6 @@ from drf_spectacular.views import (
     SpectacularRedocView,
     SpectacularSwaggerView,
 )
-
 from wit.views import HealthStatusView, LivenessView, ReadinessView
 
 urlpatterns = [

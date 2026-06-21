@@ -1,7 +1,19 @@
 import pytest
 from rest_framework.test import APIClient
-
 from wit.models import Persona
+
+
+@pytest.fixture(autouse=True)
+def _disable_ssl_redirect(settings):
+    """Keep the test client on HTTP.
+
+    Production runs with DEBUG=False, which enables SECURE_SSL_REDIRECT. CI
+    also runs the suite with DEBUG=False, so without this every test-client
+    request would be 301-redirected to HTTPS before reaching a view. Disable
+    the redirect for tests so they exercise the views directly; production
+    behaviour is unchanged.
+    """
+    settings.SECURE_SSL_REDIRECT = False
 
 
 @pytest.fixture
