@@ -53,12 +53,22 @@ APPEND_SLASH = True
 
 ROOT_URLCONF = "base.urls"
 
+# Number of trusted reverse proxies in front of the app. When deployed behind
+# a proxy (nginx, load balancer, CDN), set NUM_PROXIES to how many so DRF
+# resolves the real client IP from X-Forwarded-For for per-IP throttling,
+# instead of bucketing every client under the proxy's address. Default None
+# keeps the direct-connection behaviour (uses REMOTE_ADDR).
+NUM_PROXIES = config(
+    "NUM_PROXIES", default=None, cast=lambda v: int(v) if v not in (None, "") else None
+)
+
 REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 10,
     "DEFAULT_AUTHENTICATION_CLASSES": [],
     "DEFAULT_PERMISSION_CLASSES": [],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "NUM_PROXIES": NUM_PROXIES,
     # No default throttle — BaseWitView applies WitAnonThrottle explicitly.
     # This keeps Swagger/schema/health views unthrottled.
     "DEFAULT_THROTTLE_RATES": {
@@ -132,6 +142,13 @@ if not DEBUG:
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+
+# When behind a TLS-terminating proxy that sets X-Forwarded-Proto, trust it so
+# Django recognises HTTPS requests (otherwise SECURE_SSL_REDIRECT loops forever
+# behind the proxy). Opt-in: trusting this header without such a proxy in front
+# would let clients spoof HTTPS, so enable it only in proxied deployments.
+if config("USE_PROXY_SSL_HEADER", default=False, cast=bool):
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # Redis Configuration
 REDIS_HOST = config("REDIS_HOST", default="localhost")
