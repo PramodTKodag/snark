@@ -33,3 +33,6 @@ docs/superpowers/
 
 # subagent-driven-development scratch
 .superpowers/
+
+# Local promotion/marketing drafts and demo-render sources
+.promo/
