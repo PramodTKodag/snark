@@ -13,6 +13,10 @@
   <a href="https://www.djangoproject.com/"><img src="https://img.shields.io/badge/django-5.1-green.svg" alt="Django 5.1"></a>
 </p>
 
+<p align="center">
+  <img src="assets/snark-demo.gif" alt="Snark API returning live AI-generated humor" width="760">
+</p>
+
 ---
 
 ## What is Snark?
