@@ -185,6 +185,24 @@ data: [DONE]
 
 Streaming bypasses the response cache, so streamed calls always hit the LLM. Omit `stream` for the default cached JSON response.
 
+### Batch
+
+`POST /v1/wit/batch/` runs up to 5 personas in a single request. Each item names a `persona` slug (see `/v1/wit/personas/`) plus the same optional `q`, `mood`, `length`, and `lang` fields. Results come back in order; a bad slug yields a per-item error without failing the rest.
+
+```
+curl -X POST "http://localhost:8100/v1/wit/batch/" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "requests": [
+      {"persona": "roast", "q": "Dave"},
+      {"persona": "commit-message"},
+      {"persona": "hot-take", "q": "tabs vs spaces", "mood": "spicy"}
+    ]
+  }'
+```
+
+Each item is a separate LLM call, so a batch is slower than a single request and counts as one hit against the rate limit.
+
 ### Health and Docs
 
 | Endpoint | Description |

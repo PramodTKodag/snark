@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    BatchView,
     BugBlameView,
     CodeReviewView,
     CommitMessageView,
@@ -94,4 +95,5 @@ urlpatterns = [
         name="wit-roast-github",
     ),
     path("stats/", StatsView.as_view(), name="wit-stats"),
+    path("batch/", BatchView.as_view(), name="wit-batch"),
 ]

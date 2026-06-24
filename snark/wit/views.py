@@ -12,6 +12,7 @@ from rest_framework.views import APIView
 
 from .constants import ALLOWED_MOODS
 from .docs import (
+    BATCH_DESC,
     BUG_BLAME_DESC,
     CODE_REVIEW_DESC,
     COMMIT_MESSAGE_DESC,
@@ -54,6 +55,8 @@ from .github import (
 from .models import Persona, ResponseLog
 from .providers.base import ProviderError
 from .serializers import (
+    BatchRequestSerializer,
+    BatchResponseSerializer,
     HealthResponseSerializer,
     PersonaListItemSerializer,
     StatsResponseSerializer,
@@ -849,6 +852,73 @@ class StatsView(APIView):
             }
             cache.set(cache_key, stats, 60)
         return Response(stats)
+
+
+@extend_schema(
+    tags=["Wit"],
+    summary="Batch — many personas in one request",
+    description=BATCH_DESC,
+    request=BatchRequestSerializer,
+    responses={200: BatchResponseSerializer},
+)
+class BatchView(APIView):
+    authentication_classes = []
+    permission_classes = []
+    throttle_classes = [WitAnonThrottle]
+
+    def post(self, request):
+        serializer = BatchRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {
+                    "error": "Invalid batch request",
+                    "code": "invalid_request",
+                    "details": serializer.errors,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        results = []
+        for item in serializer.validated_data["requests"]:
+            slug = item["persona"]
+            try:
+                results.append(
+                    WitService.generate(
+                        slug=slug,
+                        user_input=item.get("q", ""),
+                        mood=item.get("mood") or None,
+                        length=item.get("length") or None,
+                        lang=item.get("lang") or None,
+                    )
+                )
+            except PersonaNotFoundError:
+                results.append(
+                    {
+                        "error": f"Persona '{slug}' not found",
+                        "code": "persona_not_found",
+                        "persona": slug,
+                    }
+                )
+            except ProviderError as exc:
+                logger.error("Batch ProviderError for slug=%s: %s", slug, exc)
+                results.append(
+                    {
+                        "error": "AI service temporarily unavailable",
+                        "code": "provider_unavailable",
+                        "persona": slug,
+                    }
+                )
+            except Exception as exc:
+                logger.exception("Batch unexpected error for slug=%s: %s", slug, exc)
+                results.append(
+                    {
+                        "error": "Internal server error",
+                        "code": "internal_error",
+                        "persona": slug,
+                    }
+                )
+
+        return Response({"results": results}, status=status.HTTP_200_OK)
 
 
 # ---------------------------------------------------------------------------
