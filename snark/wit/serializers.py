@@ -58,6 +58,28 @@ class BatchItemSerializer(serializers.Serializer):
         return clean_lang(value)
 
 
+class ReplyRequestSerializer(serializers.Serializer):
+    post = serializers.CharField(max_length=2000)
+    mood = serializers.ChoiceField(
+        choices=sorted(ALLOWED_MOODS), required=False, allow_blank=True
+    )
+    length = serializers.ChoiceField(
+        choices=sorted(ALLOWED_LENGTHS), required=False, allow_blank=True
+    )
+    lang = serializers.CharField(
+        required=False, allow_blank=True, max_length=MAX_LANG_LENGTH, default=""
+    )
+
+    def validate_post(self, value):
+        cleaned = value.strip()
+        if not cleaned:
+            raise serializers.ValidationError("Post text must not be empty.")
+        return cleaned
+
+    def validate_lang(self, value):
+        return clean_lang(value)
+
+
 class BatchRequestSerializer(serializers.Serializer):
     requests = BatchItemSerializer(many=True, allow_empty=False)
 

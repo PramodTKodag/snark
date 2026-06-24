@@ -37,6 +37,7 @@ from .docs import (
     RANDOM_DESC,
     RANDOM_EXCUSE_DESC,
     RATE_ANYTHING_DESC,
+    REPLY_DESC,
     ROAST_DESC,
     ROAST_GITHUB_DESC,
     SAY_NO_DESC,
@@ -60,6 +61,7 @@ from .serializers import (
     BatchResponseSerializer,
     HealthResponseSerializer,
     PersonaListItemSerializer,
+    ReplyRequestSerializer,
     StatsResponseSerializer,
     WitQuerySerializer,
     WitResponseSerializer,
@@ -868,6 +870,66 @@ class StatsView(APIView):
             }
             cache.set(cache_key, stats, 60)
         return Response(stats)
+
+
+@extend_schema(
+    tags=["Wit"],
+    summary="Sarcastic reply to a social post",
+    description=REPLY_DESC,
+    request=ReplyRequestSerializer,
+    responses={200: WitResponseSerializer},
+)
+class ReplyView(APIView):
+    authentication_classes = []
+    permission_classes = []
+    throttle_classes = [WitAnonThrottle]
+
+    def post(self, request):
+        serializer = ReplyRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                {
+                    "error": "Invalid reply request",
+                    "code": "invalid_request",
+                    "details": serializer.errors,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        data = serializer.validated_data
+        try:
+            result = WitService.generate(
+                slug="reply",
+                user_input=data["post"],
+                mood=data.get("mood") or None,
+                # Default to a tweet-safe length unless the caller asks otherwise.
+                length=data.get("length") or "short",
+                lang=data.get("lang") or None,
+            )
+            return Response(result, status=status.HTTP_200_OK)
+        except PersonaNotFoundError:
+            logger.error("Reply persona missing — run seed_personas")
+            return Response(
+                {
+                    "error": "Reply persona not configured",
+                    "code": "persona_not_found",
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except ProviderError as exc:
+            logger.error("Reply ProviderError: %s", exc)
+            return Response(
+                {
+                    "error": "AI service temporarily unavailable",
+                    "code": "provider_unavailable",
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except Exception as exc:
+            logger.exception("Reply unexpected error: %s", exc)
+            return Response(
+                {"error": "Internal server error", "code": "internal_error"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 @extend_schema(

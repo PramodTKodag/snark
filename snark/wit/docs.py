@@ -571,6 +571,28 @@ ROAST_GITHUB_DESC = (
     "}\n```"
 )
 
+REPLY_DESC = (
+    "Given a social media post, returns ONE short, sarcastic reply to it — "
+    "built for bots that clap back in the comments. POST the post text as "
+    "`post`; the reply reacts to what the post actually says and is kept "
+    "tweet-length by default (`length` defaults to `short`). Accepts the same "
+    "optional `mood`, `length`, and `lang` fields as the other endpoints.\n\n"
+    "**When to use:** You're building a Twitter/Instagram reply bot and want a "
+    "witty comeback for an incoming post or mention.\n\n"
+    "**Example request:**\n"
+    "```\nPOST /v1/wit/reply/\n"
+    "Content-Type: application/json\n\n"
+    '{"post": "Just shipped a feature with zero tests. What could go wrong?"}\n'
+    "```\n\n"
+    "**Example response:**\n"
+    "```json\n{\n"
+    '  "response": "Bold of you to assume \\"what could go wrong\\" is a '
+    'question and not a prophecy.",\n'
+    '  "persona": "The Reply Guy",\n'
+    '  "cached": false\n'
+    "}\n```"
+)
+
 BATCH_DESC = (
     "Run several personas in a single request. POST a list of up to 5 items, "
     "each naming a `persona` slug (see `/v1/wit/personas/`) plus the same "

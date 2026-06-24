@@ -203,6 +203,18 @@ curl -X POST "http://localhost:8100/v1/wit/batch/" \
 
 Each item is a separate LLM call, so a batch is slower than a single request and counts as one hit against the rate limit.
 
+### Replying to posts
+
+`POST /v1/wit/reply/` takes a social media post and returns one short, sarcastic reply to it — built for reply bots. The reply reacts to the post's actual content and is kept tweet-length by default (`length` defaults to `short`).
+
+```
+curl -X POST "http://localhost:8100/v1/wit/reply/" \
+  -H "Content-Type: application/json" \
+  -d '{"post": "Just shipped a feature with zero tests. What could go wrong?"}'
+```
+
+See [docs/twitter-bot.md](docs/twitter-bot.md) for a complete ~30-line Twitter reply bot using this endpoint.
+
 ### Health and Docs
 
 | Endpoint | Description |
