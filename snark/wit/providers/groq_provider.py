@@ -97,6 +97,44 @@ class GroqProvider(AIProvider):
             latency_ms=latency_ms,
         )
 
+    def generate_stream(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        temperature: float = 0.9,
+        max_tokens: int = 200,
+    ):
+        if self._client is None:
+            raise ProviderError(
+                f"Groq provider unavailable: {self._unavailable_reason}"
+            )
+
+        try:
+            stream = self._client.chat.completions.create(
+                model=self._model,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                stream=True,
+            )
+            for chunk in stream:
+                if not chunk.choices:
+                    continue
+                choice = chunk.choices[0]
+                if getattr(choice, "finish_reason", None) == "content_filter":
+                    raise ContentFilterError("Groq content filter blocked the response")
+                delta = choice.delta.content or ""
+                if delta:
+                    yield delta
+        except ContentFilterError:
+            raise
+        except Exception as exc:
+            logger.error("Groq streaming error [%s]: %s", type(exc).__name__, exc)
+            raise ProviderError(f"Groq streaming failed: {exc}") from exc
+
     def health_check(self) -> bool:
         if self._client is None:
             return False

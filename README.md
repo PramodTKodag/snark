@@ -92,7 +92,7 @@ Every endpoint returns the same compact JSON shape:
 
 ## API Endpoints
 
-All endpoints are `GET` requests under `/v1/wit/`. Most accept optional `?q=`, `?mood=`, `?length=`, and `?lang=` query parameters.
+All endpoints are `GET` requests under `/v1/wit/`. Most accept optional `?q=`, `?mood=`, `?length=`, `?lang=`, and `?stream=` query parameters.
 
 ### Core
 
@@ -165,6 +165,25 @@ Add `?length=` (`short`, `medium`, or `long`) to control response size, and `?la
 curl "http://localhost:8100/v1/wit/hot-take/?q=pizza&lang=Spanish"
 curl "http://localhost:8100/v1/wit/proverb/?q=coding&length=long"
 ```
+
+### Streaming
+
+Add `?stream=true` to any endpoint and use `curl -N` to receive the response token-by-token as [Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events), instead of one JSON object:
+
+<p align="center"><img src="assets/snark-stream.gif" alt="Snark streaming a response token by token, live from the LLM" width="760"></p>
+
+```
+curl -N "http://localhost:8100/v1/wit/hot-take/?q=tabs+vs+spaces&stream=true"
+
+data: {"delta": "Forcing"}
+data: {"delta": " everyone"}
+data: {"delta": " to"}
+...
+data: {"persona": "The Hot Take Machine", "done": true}
+data: [DONE]
+```
+
+Streaming bypasses the response cache, so streamed calls always hit the LLM. Omit `stream` for the default cached JSON response.
 
 ### Health and Docs
 

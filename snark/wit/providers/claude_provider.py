@@ -96,6 +96,46 @@ class ClaudeProvider(AIProvider):
             latency_ms=latency_ms,
         )
 
+    def generate_stream(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        temperature: float = 0.9,
+        max_tokens: int = 200,
+    ):
+        if self._client is None:
+            raise ProviderError(
+                f"Claude provider unavailable: {self._unavailable_reason}"
+            )
+
+        anthropic = self._anthropic
+        try:
+            with self._client.messages.stream(
+                model=self._model,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                system=system_prompt,
+                messages=[{"role": "user", "content": user_prompt}],
+            ) as stream:
+                for text in stream.text_stream:
+                    if text:
+                        yield text
+        except anthropic.BadRequestError as exc:
+            if "content filtering" in str(exc).lower() or "blocked" in str(exc).lower():
+                logger.warning("Claude content filter triggered: %s", exc)
+                raise ContentFilterError(
+                    f"Claude content filter blocked response: {exc}"
+                ) from exc
+            raise ProviderError(f"Claude streaming failed: {exc}") from exc
+        except anthropic.APIError as exc:
+            logger.error("Claude streaming error [%s]: %s", type(exc).__name__, exc)
+            raise ProviderError(f"Claude streaming failed: {exc}") from exc
+        except Exception as exc:
+            logger.error(
+                "Claude streaming unexpected error [%s]: %s", type(exc).__name__, exc
+            )
+            raise ProviderError(f"Claude streaming error: {exc}") from exc
+
     def health_check(self) -> bool:
         if self._client is None:
             return False

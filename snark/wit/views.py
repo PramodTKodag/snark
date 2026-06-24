@@ -1,6 +1,8 @@
+import json
 import logging
 import re
 
+from django.http import StreamingHttpResponse
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
@@ -98,6 +100,9 @@ class BaseWitView(APIView):
         lang = params.validated_data.get("lang") or None
         effective_input = user_input if user_input is not None else query
 
+        if params.validated_data.get("stream"):
+            return self._stream_response(slug, effective_input, mood, length, lang)
+
         try:
             result = WitService.generate(
                 slug=slug,
@@ -127,6 +132,42 @@ class BaseWitView(APIView):
                 {"error": "Internal server error", "code": "internal_error"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+    def _stream_response(self, slug, user_input, mood, length, lang):
+        response = StreamingHttpResponse(
+            self._sse_events(slug, user_input, mood, length, lang),
+            content_type="text/event-stream",
+        )
+        response["Cache-Control"] = "no-cache"
+        # Tell reverse proxies (nginx) not to buffer the stream.
+        response["X-Accel-Buffering"] = "no"
+        return response
+
+    @staticmethod
+    def _sse_events(slug, user_input, mood, length, lang):
+        try:
+            for event in WitService.generate_stream(
+                slug=slug,
+                user_input=user_input,
+                mood=mood,
+                length=length,
+                lang=lang,
+            ):
+                yield f"data: {json.dumps(event)}\n\n"
+        except PersonaNotFoundError:
+            err = {"error": f"Persona '{slug}' not found", "code": "persona_not_found"}
+            yield f"data: {json.dumps(err)}\n\n"
+        except ProviderError:
+            err = {
+                "error": "AI service temporarily unavailable",
+                "code": "provider_unavailable",
+            }
+            yield f"data: {json.dumps(err)}\n\n"
+        except Exception:
+            logger.exception("Unexpected streaming error for slug=%s", slug)
+            err = {"error": "Internal server error", "code": "internal_error"}
+            yield f"data: {json.dumps(err)}\n\n"
+        yield "data: [DONE]\n\n"
 
 
 # ---------------------------------------------------------------------------
@@ -161,6 +202,16 @@ _LANG_PARAM = OpenApiParameter(
     required=False,
     description="Language to respond in (e.g. Spanish, French). Defaults to English.",
 )
+_STREAM_PARAM = OpenApiParameter(
+    "stream",
+    bool,
+    OpenApiParameter.QUERY,
+    required=False,
+    description=(
+        "When true, stream the response token-by-token as Server-Sent Events "
+        "(text/event-stream) instead of a single JSON object."
+    ),
+)
 
 
 # ---------------------------------------------------------------------------
@@ -172,7 +223,7 @@ _LANG_PARAM = OpenApiParameter(
     tags=["Wit"],
     summary="Creative excuse to say no",
     description=SAY_NO_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
     responses={200: WitResponseSerializer},
 )
 class SayNoView(BaseWitView):
@@ -184,7 +235,7 @@ class SayNoView(BaseWitView):
     tags=["Wit"],
     summary="Random excuse generator",
     description=RANDOM_EXCUSE_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
     responses={200: WitResponseSerializer},
 )
 class RandomExcuseView(BaseWitView):
@@ -196,7 +247,7 @@ class RandomExcuseView(BaseWitView):
     tags=["Wit"],
     summary="Corporate jargon generator",
     description=CORPORATE_JARGON_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
     responses={200: WitResponseSerializer},
 )
 class CorporateJargonView(BaseWitView):
@@ -208,7 +259,7 @@ class CorporateJargonView(BaseWitView):
     tags=["Wit"],
     summary="Honest git commit message",
     description=COMMIT_MESSAGE_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
     responses={200: WitResponseSerializer},
 )
 class CommitMessageView(BaseWitView):
@@ -220,7 +271,7 @@ class CommitMessageView(BaseWitView):
     tags=["Wit"],
     summary="Spicy hot take on anything",
     description=HOT_TAKE_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
     responses={200: WitResponseSerializer},
 )
 class HotTakeView(BaseWitView):
@@ -232,7 +283,7 @@ class HotTakeView(BaseWitView):
     tags=["Wit"],
     summary="Wholesome compliment",
     description=COMPLIMENT_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
     responses={200: WitResponseSerializer},
 )
 class ComplimentView(BaseWitView):
@@ -244,7 +295,7 @@ class ComplimentView(BaseWitView):
     tags=["Wit"],
     summary="Who to blame when things go wrong",
     description=BUG_BLAME_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
     responses={200: WitResponseSerializer},
 )
 class BugBlameView(BaseWitView):
@@ -262,6 +313,7 @@ class BugBlameView(BaseWitView):
         _MOOD_PARAM,
         _LENGTH_PARAM,
         _LANG_PARAM,
+        _STREAM_PARAM,
     ],
     responses={200: WitResponseSerializer},
 )
@@ -294,6 +346,7 @@ class RoastView(BaseWitView):
         _MOOD_PARAM,
         _LENGTH_PARAM,
         _LANG_PARAM,
+        _STREAM_PARAM,
     ],
     responses={200: WitResponseSerializer},
 )
@@ -323,6 +376,7 @@ class WorthItView(BaseWitView):
         _MOOD_PARAM,
         _LENGTH_PARAM,
         _LANG_PARAM,
+        _STREAM_PARAM,
     ],
     responses={200: WitResponseSerializer},
 )
@@ -346,7 +400,7 @@ class ExplainLikeIm5View(BaseWitView):
     tags=["Wit"],
     summary="Clever themed pickup lines",
     description=PICKUP_LINE_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
     responses={200: WitResponseSerializer},
 )
 class PickupLineView(BaseWitView):
@@ -358,7 +412,7 @@ class PickupLineView(BaseWitView):
     tags=["Wit"],
     summary="Social media bio generator",
     description=SOCIAL_BIO_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
     responses={200: WitResponseSerializer},
 )
 class SocialBioView(BaseWitView):
@@ -370,7 +424,7 @@ class SocialBioView(BaseWitView):
     tags=["Wit"],
     summary="Absurd motivational quote",
     description=MOTIVATION_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
     responses={200: WitResponseSerializer},
 )
 class MotivationView(BaseWitView):
@@ -382,7 +436,7 @@ class MotivationView(BaseWitView):
     tags=["Wit"],
     summary="Fortune cookie wisdom",
     description=FORTUNE_COOKIE_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
     responses={200: WitResponseSerializer},
 )
 class FortuneCookieView(BaseWitView):
@@ -405,6 +459,7 @@ class FortuneCookieView(BaseWitView):
         _MOOD_PARAM,
         _LENGTH_PARAM,
         _LANG_PARAM,
+        _STREAM_PARAM,
     ],
     responses={200: WitResponseSerializer},
 )
@@ -423,7 +478,7 @@ class NameSuggestionView(BaseWitView):
     tags=["Wit"],
     summary="Brutally honest status update",
     description=STANDUP_UPDATE_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
     responses={200: WitResponseSerializer},
 )
 class StandupUpdateView(BaseWitView):
@@ -435,7 +490,7 @@ class StandupUpdateView(BaseWitView):
     tags=["Wit"],
     summary="Passive-aggressive peer feedback",
     description=CODE_REVIEW_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
     responses={200: WitResponseSerializer},
 )
 class CodeReviewView(BaseWitView):
@@ -447,7 +502,7 @@ class CodeReviewView(BaseWitView):
     tags=["Wit"],
     summary="Meeting excuse or fake agenda",
     description=MEETING_EXCUSE_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
     responses={200: WitResponseSerializer},
 )
 class MeetingExcuseView(BaseWitView):
@@ -470,6 +525,7 @@ class MeetingExcuseView(BaseWitView):
         _MOOD_PARAM,
         _LENGTH_PARAM,
         _LANG_PARAM,
+        _STREAM_PARAM,
     ],
     responses={200: WitResponseSerializer},
 )
@@ -488,7 +544,7 @@ class JargonTranslatorView(BaseWitView):
     tags=["Wit"],
     summary="Incident post-mortem generator",
     description=INCIDENT_POSTMORTEM_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
     responses={200: WitResponseSerializer},
 )
 class IncidentPostmortemView(BaseWitView):
@@ -516,6 +572,7 @@ class IncidentPostmortemView(BaseWitView):
         _MOOD_PARAM,
         _LENGTH_PARAM,
         _LANG_PARAM,
+        _STREAM_PARAM,
     ],
     responses={200: WitResponseSerializer},
 )
@@ -544,6 +601,7 @@ class TechBattleView(BaseWitView):
         _MOOD_PARAM,
         _LENGTH_PARAM,
         _LANG_PARAM,
+        _STREAM_PARAM,
     ],
     responses={200: WitResponseSerializer},
 )
@@ -565,7 +623,7 @@ class RateAnythingView(BaseWitView):
     tags=["Wit"],
     summary="Modern horoscope",
     description=HOROSCOPE_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
     responses={200: WitResponseSerializer},
 )
 class HoroscopeView(BaseWitView):
@@ -588,6 +646,7 @@ class HoroscopeView(BaseWitView):
         _MOOD_PARAM,
         _LENGTH_PARAM,
         _LANG_PARAM,
+        _STREAM_PARAM,
     ],
     responses={200: WitResponseSerializer},
 )
@@ -609,7 +668,7 @@ class TldrView(BaseWitView):
     tags=["Wit"],
     summary="Absurd interview question",
     description=INTERVIEW_QUESTION_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
     responses={200: WitResponseSerializer},
 )
 class InterviewQuestionView(BaseWitView):
@@ -621,7 +680,7 @@ class InterviewQuestionView(BaseWitView):
     tags=["Wit"],
     summary="Honest changelog entry",
     description=HONEST_CHANGELOG_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
     responses={200: WitResponseSerializer},
 )
 class HonestChangelogView(BaseWitView):
@@ -633,7 +692,7 @@ class HonestChangelogView(BaseWitView):
     tags=["Wit"],
     summary="Troubleshooting narrator",
     description=DEBUG_STORY_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
     responses={200: WitResponseSerializer},
 )
 class DebugStoryView(BaseWitView):
@@ -645,7 +704,7 @@ class DebugStoryView(BaseWitView):
     tags=["Wit"],
     summary="Ancient modern proverb",
     description=PROVERB_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
     responses={200: WitResponseSerializer},
 )
 class ProverbView(BaseWitView):
@@ -688,7 +747,7 @@ class PersonaListView(APIView):
     tags=["Wit"],
     summary="Random persona — surprise me",
     description=RANDOM_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
     responses={200: WitResponseSerializer},
 )
 class RandomWitView(BaseWitView):
@@ -716,6 +775,7 @@ class RandomWitView(BaseWitView):
         _MOOD_PARAM,
         _LENGTH_PARAM,
         _LANG_PARAM,
+        _STREAM_PARAM,
     ],
     responses={200: WitResponseSerializer},
 )
