@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
-from .constants import ALLOWED_MOODS, LENGTH_MAX_TOKENS
+from .constants import ALLOWED_MOODS
 from .docs import (
     BATCH_DESC,
     BUG_BLAME_DESC,
@@ -768,7 +768,7 @@ class PersonaListView(APIView):
 
 @extend_schema(
     tags=["Meta"],
-    summary="List accepted moods and lengths",
+    summary="List accepted mood values",
     description=MOODS_DESC,
     responses={200: MoodsResponseSerializer},
 )
@@ -778,13 +778,7 @@ class MoodsView(APIView):
     throttle_classes = []
 
     def get(self, request):
-        return Response(
-            {
-                "moods": sorted(ALLOWED_MOODS),
-                # Logical order (short < medium < long), not alphabetical.
-                "lengths": list(LENGTH_MAX_TOKENS),
-            }
-        )
+        return Response({"moods": sorted(ALLOWED_MOODS)})
 
 
 @extend_schema(

@@ -142,7 +142,7 @@ All endpoints are `GET` requests under `/v1/wit/`. Most accept optional `?q=`, `
 | Endpoint | Description |
 |----------|-------------|
 | `/v1/wit/personas/` | List every available persona (slug, name, tone) |
-| `/v1/wit/moods/` | List accepted `mood` and `length` values |
+| `/v1/wit/moods/` | List accepted `mood` values |
 | `/v1/wit/random/` | Surprise me — random persona |
 | `/v1/wit/roast-github/<username>/` | Roast a public GitHub profile |
 | `/v1/wit/stats/` | Usage stats (totals and top personas) |
@@ -156,7 +156,7 @@ sarcastic, angry, funny, sad, excited, dramatic, passive-aggressive,
 philosophical, wholesome, unhinged, dry, chaotic, chill, spicy, deadpan
 ```
 
-Fetch this list programmatically (plus the `length` presets) from [`/v1/wit/moods/`](http://localhost:8100/v1/wit/moods/).
+Fetch this list programmatically from [`/v1/wit/moods/`](http://localhost:8100/v1/wit/moods/).
 
 Example: `curl "http://localhost:8100/v1/wit/motivation/?mood=passive-aggressive"`
 

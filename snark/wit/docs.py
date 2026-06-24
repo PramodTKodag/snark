@@ -594,20 +594,20 @@ REPLY_DESC = (
 )
 
 MOODS_DESC = (
-    "Lists every value accepted by the `mood` query parameter, plus the "
-    "presets accepted by `length`. Use it to discover the options "
-    "programmatically — for building a dropdown, validating input, or seeding "
-    "a client — instead of hardcoding them.\n\n"
+    "Lists every value accepted by the `mood` query parameter. Use it to "
+    "discover the options programmatically — for building a dropdown, "
+    "validating input, or seeding a client — instead of hardcoding them.\n\n"
+    "(The `length` parameter accepts a fixed set — `short`, `medium`, `long` — "
+    "shown as an enum on each endpoint's `length` parameter.)\n\n"
     "**When to use:** You're building a UI or client and want the current set "
-    "of moods and lengths.\n\n"
+    "of moods.\n\n"
     "**Example request:**\n"
     "```\nGET /v1/wit/moods/\n```\n\n"
     "**Example response:**\n"
     "```json\n{\n"
     '  "moods": ["angry", "chaotic", "chill", "deadpan", "dramatic", "dry", '
     '"excited", "funny", "passive-aggressive", "philosophical", "sad", '
-    '"sarcastic", "spicy", "unhinged", "wholesome"],\n'
-    '  "lengths": ["short", "medium", "long"]\n'
+    '"sarcastic", "spicy", "unhinged", "wholesome"]\n'
     "}\n```"
 )
 
