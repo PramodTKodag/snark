@@ -213,6 +213,23 @@ Each item is a separate LLM call, so a batch is slower than a single request and
 | `/v1/wit/swagger/` | Swagger UI |
 | `/v1/wit/redoc/` | ReDoc |
 
+## Command-line client
+
+The repo ships a dependency-free CLI that wraps the API. Install the package and use the `snark` command:
+
+```
+pip install -e .
+
+snark hot-take "tabs vs spaces"
+snark roast Dave --mood spicy
+snark hot-take "remote work" --stream
+snark github torvalds
+snark personas
+snark stats
+```
+
+The first positional argument is a persona slug (or one of `personas`, `stats`, `random`, `roast <name>`, `github <username>`); the second is optional context. It points at `http://localhost:8100` by default — override with `--api` or the `SNARK_API_URL` environment variable.
+
 ## Architecture
 
 ```
