@@ -6,6 +6,7 @@ from django.http import StreamingHttpResponse
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
+from rest_framework.renderers import BaseRenderer, JSONRenderer
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
@@ -81,10 +82,25 @@ class WitAnonThrottle(AnonRateThrottle):
     rate = "50/hour"
 
 
+class EventStreamRenderer(BaseRenderer):
+    """Advertises text/event-stream so DRF content negotiation accepts SSE
+    clients (which send ``Accept: text/event-stream``). The streaming view
+    returns a ``StreamingHttpResponse`` directly, so this renderer's ``render``
+    is never actually invoked — it exists purely to satisfy negotiation."""
+
+    media_type = "text/event-stream"
+    format = "event-stream"
+    charset = None
+
+    def render(self, data, accepted_media_type=None, renderer_context=None):
+        return data
+
+
 class BaseWitView(APIView):
     authentication_classes = []
     permission_classes = []
     throttle_classes = [WitAnonThrottle]
+    renderer_classes = [JSONRenderer, EventStreamRenderer]
 
     def handle_generate(self, request, slug, user_input=None):
         params = WitQuerySerializer(data=request.query_params)

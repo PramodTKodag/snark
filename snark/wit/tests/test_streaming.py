@@ -75,6 +75,18 @@ class TestStreamingEndpoint:
         assert 'data: {"delta": "Hi"}' in body
         assert "data: [DONE]" in body
 
+    @patch("wit.views.WitService.generate_stream")
+    def test_accept_event_stream_header_is_negotiable(self, mock_stream, persona_no):
+        # A real SSE client sends Accept: text/event-stream; it must not 406.
+        mock_stream.return_value = iter(
+            [{"persona": "The Refusal Artist", "done": True}]
+        )
+        resp = self.client.get(
+            "/v1/wit/say-no/?stream=true", HTTP_ACCEPT="text/event-stream"
+        )
+        assert resp.status_code == 200
+        assert resp["Content-Type"].startswith("text/event-stream")
+
     @patch("wit.views.WitService.generate")
     @patch("wit.views.WitService.generate_stream")
     def test_default_is_not_streamed(self, mock_stream, mock_gen, persona_no):
