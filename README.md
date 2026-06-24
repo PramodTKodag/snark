@@ -92,7 +92,7 @@ Every endpoint returns the same compact JSON shape:
 
 ## API Endpoints
 
-All endpoints are `GET` requests under `/v1/wit/`. Most accept optional `?q=` and `?mood=` query parameters.
+All endpoints are `GET` requests under `/v1/wit/`. Most accept optional `?q=`, `?mood=`, `?length=`, and `?lang=` query parameters.
 
 ### Core
 
@@ -137,6 +137,15 @@ All endpoints are `GET` requests under `/v1/wit/`. Most accept optional `?q=` an
 | `/v1/wit/debug-story/` | Debugging horror story |
 | `/v1/wit/proverb/` | Tech proverb |
 
+### Discovery and Meta
+
+| Endpoint | Description |
+|----------|-------------|
+| `/v1/wit/personas/` | List every available persona (slug, name, tone) |
+| `/v1/wit/random/` | Surprise me — random persona |
+| `/v1/wit/roast-github/<username>/` | Roast a public GitHub profile |
+| `/v1/wit/stats/` | Usage stats (totals and top personas) |
+
 ### Mood Parameter
 
 Add `?mood=` to any endpoint to change the tone:
@@ -147,6 +156,15 @@ philosophical, wholesome, unhinged, dry, chaotic, chill, spicy, deadpan
 ```
 
 Example: `curl "http://localhost:8100/v1/wit/motivation/?mood=passive-aggressive"`
+
+### Length and Language
+
+Add `?length=` (`short`, `medium`, or `long`) to control response size, and `?lang=` to get the response in another language:
+
+```
+curl "http://localhost:8100/v1/wit/hot-take/?q=pizza&lang=Spanish"
+curl "http://localhost:8100/v1/wit/proverb/?q=coding&length=long"
+```
 
 ### Health and Docs
 
