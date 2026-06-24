@@ -103,7 +103,6 @@ class PersonaListItemSerializer(serializers.Serializer):
 
 class MoodsResponseSerializer(serializers.Serializer):
     moods = serializers.ListField(child=serializers.CharField())
-    lengths = serializers.ListField(child=serializers.CharField())
 
 
 class PersonaStatSerializer(serializers.Serializer):
