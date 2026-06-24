@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
-from .constants import ALLOWED_MOODS
+from .constants import ALLOWED_MOODS, LENGTH_MAX_TOKENS
 from .docs import (
     BATCH_DESC,
     BUG_BLAME_DESC,
@@ -29,6 +29,7 @@ from .docs import (
     INTERVIEW_QUESTION_DESC,
     JARGON_TRANSLATOR_DESC,
     MEETING_EXCUSE_DESC,
+    MOODS_DESC,
     MOTIVATION_DESC,
     NAME_SUGGESTION_DESC,
     PERSONAS_DESC,
@@ -60,6 +61,7 @@ from .serializers import (
     BatchRequestSerializer,
     BatchResponseSerializer,
     HealthResponseSerializer,
+    MoodsResponseSerializer,
     PersonaListItemSerializer,
     ReplyRequestSerializer,
     StatsResponseSerializer,
@@ -762,6 +764,27 @@ class PersonaListView(APIView):
             )
             cache.set(cache_key, personas, 300)
         return Response(personas)
+
+
+@extend_schema(
+    tags=["Meta"],
+    summary="List accepted moods and lengths",
+    description=MOODS_DESC,
+    responses={200: MoodsResponseSerializer},
+)
+class MoodsView(APIView):
+    authentication_classes = []
+    permission_classes = []
+    throttle_classes = []
+
+    def get(self, request):
+        return Response(
+            {
+                "moods": sorted(ALLOWED_MOODS),
+                # Logical order (short < medium < long), not alphabetical.
+                "lengths": list(LENGTH_MAX_TOKENS),
+            }
+        )
 
 
 @extend_schema(

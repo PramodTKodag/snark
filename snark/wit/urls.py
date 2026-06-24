@@ -17,6 +17,7 @@ from .views import (
     InterviewQuestionView,
     JargonTranslatorView,
     MeetingExcuseView,
+    MoodsView,
     MotivationView,
     NameSuggestionView,
     PersonaListView,
@@ -89,6 +90,7 @@ urlpatterns = [
     path("proverb/", ProverbView.as_view(), name="wit-proverb"),
     # Discovery & meta
     path("personas/", PersonaListView.as_view(), name="wit-personas"),
+    path("moods/", MoodsView.as_view(), name="wit-moods"),
     path("random/", RandomWitView.as_view(), name="wit-random"),
     path(
         "roast-github/<str:username>/",
