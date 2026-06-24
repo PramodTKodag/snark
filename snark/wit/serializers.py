@@ -101,6 +101,11 @@ class PersonaListItemSerializer(serializers.Serializer):
     tone = serializers.CharField()
 
 
+class MoodsResponseSerializer(serializers.Serializer):
+    moods = serializers.ListField(child=serializers.CharField())
+    lengths = serializers.ListField(child=serializers.CharField())
+
+
 class PersonaStatSerializer(serializers.Serializer):
     slug = serializers.CharField()
     name = serializers.CharField()
