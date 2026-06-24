@@ -24,6 +24,7 @@ class WitQuerySerializer(serializers.Serializer):
     lang = serializers.CharField(
         required=False, allow_blank=True, max_length=MAX_LANG_LENGTH, default=""
     )
+    stream = serializers.BooleanField(required=False, default=False)
 
     def validate_lang(self, value):
         # Free text lands in the prompt, so keep it to letters/spaces/hyphens

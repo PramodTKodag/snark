@@ -105,6 +105,44 @@ class GeminiProvider(AIProvider):
             latency_ms=latency_ms,
         )
 
+    def generate_stream(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        temperature: float = 0.9,
+        max_tokens: int = 200,
+    ):
+        if self._client is None:
+            raise ProviderError(
+                f"Gemini provider unavailable: {self._unavailable_reason}"
+            )
+
+        from google.genai import types
+
+        try:
+            stream = self._client.models.generate_content_stream(
+                model=self._model_name,
+                contents=user_prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_prompt,
+                    temperature=temperature,
+                    max_output_tokens=max_tokens,
+                ),
+            )
+            for chunk in stream:
+                self._raise_if_blocked(chunk)
+                try:
+                    text = chunk.text or ""
+                except (ValueError, AttributeError):
+                    text = ""
+                if text:
+                    yield text
+        except ContentFilterError:
+            raise
+        except Exception as exc:
+            logger.error("Gemini streaming error [%s]: %s", type(exc).__name__, exc)
+            raise ProviderError(f"Gemini streaming failed: {exc}") from exc
+
     @staticmethod
     def _raise_if_blocked(response) -> None:
         prompt_feedback = getattr(response, "prompt_feedback", None)

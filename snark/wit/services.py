@@ -1,5 +1,6 @@
 import hashlib
 import logging
+import time
 
 from django.core.cache import cache
 
@@ -68,6 +69,91 @@ class WitService:
         cache.set(cache_key, ai_response.text, RESPONSE_CACHE_TTL)
 
         return {"response": ai_response.text, "persona": persona.name, "cached": False}
+
+    @staticmethod
+    def generate_stream(
+        slug: str,
+        user_input: str = "",
+        mood: str | None = None,
+        length: str | None = None,
+        lang: str | None = None,
+    ):
+        """Yield SSE-ready event dicts for a streamed response.
+
+        Bypasses the response cache (a stream can't be replayed from cache as
+        cleanly), but still records a ResponseLog once complete so usage stats
+        and anti-repetition keep working. Yields ``{"delta": ...}`` per chunk,
+        then a final ``{"persona": ..., "done": True}``.
+        """
+        if mood and mood not in ALLOWED_MOODS:
+            mood = None
+        if length and length not in ALLOWED_LENGTHS:
+            length = None
+        lang = (lang or "").strip() or None
+        persona = WitService._load_persona(slug)
+
+        system_prompt = WitService._build_prompt(persona, mood, length, lang)
+        user_prompt = user_input or "Generate a response."
+        max_tokens = LENGTH_MAX_TOKENS.get(length, persona.max_tokens)
+
+        primary = ProviderRegistry.get()
+        providers = [primary] + ProviderRegistry.get_fallbacks(exclude=primary.name)
+
+        start = time.monotonic()
+        last_error: Exception | None = None
+        for provider in providers:
+            collected: list[str] = []
+            try:
+                for delta in provider.generate_stream(
+                    system_prompt=system_prompt,
+                    user_prompt=user_prompt,
+                    temperature=persona.temperature,
+                    max_tokens=max_tokens,
+                ):
+                    collected.append(delta)
+                    yield {"delta": delta}
+            except (ContentFilterError, ProviderError) as exc:
+                last_error = exc
+                if collected:
+                    # Partial output already sent — can't cleanly switch providers.
+                    logger.warning(
+                        "Stream failed mid-response on %s: %s", provider.name, exc
+                    )
+                    break
+                logger.warning(
+                    "Stream provider %s failed, trying next: %s", provider.name, exc
+                )
+                continue
+
+            text = "".join(collected)
+            latency_ms = int((time.monotonic() - start) * 1000)
+            WitService._log_stream(persona, user_input, text, provider, latency_ms)
+            yield {"persona": persona.name, "done": True}
+            return
+
+        raise last_error or ProviderError("All AI providers failed to stream")
+
+    @staticmethod
+    def _log_stream(persona, user_input, text, provider, latency_ms):
+        if not text:
+            return
+        model_name = (
+            getattr(provider, "_model", None)
+            or getattr(provider, "_model_name", None)
+            or provider.name
+        )
+        try:
+            ResponseLog.objects.create(
+                persona=persona,
+                input_text=user_input,
+                response_text=text,
+                tokens_used=0,  # token counts aren't tracked for streamed responses
+                latency_ms=latency_ms,
+                provider_name=provider.name,
+                model_name=model_name,
+            )
+        except Exception:
+            logger.exception("Failed to log streamed response")
 
     @staticmethod
     def _generate_with_fallback(
