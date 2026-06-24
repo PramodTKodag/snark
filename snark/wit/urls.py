@@ -25,6 +25,7 @@ from .views import (
     RandomExcuseView,
     RandomWitView,
     RateAnythingView,
+    ReplyView,
     RoastGithubView,
     RoastView,
     SayNoView,
@@ -96,4 +97,5 @@ urlpatterns = [
     ),
     path("stats/", StatsView.as_view(), name="wit-stats"),
     path("batch/", BatchView.as_view(), name="wit-batch"),
+    path("reply/", ReplyView.as_view(), name="wit-reply"),
 ]
