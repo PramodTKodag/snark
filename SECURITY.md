@@ -50,6 +50,26 @@ The following are in scope for security reports:
 
 We are happy to credit security researchers who report valid vulnerabilities responsibly. Let us know if you would like to be acknowledged in our release notes.
 
+## Prompt Safety
+
+Snark feeds user-supplied text (the `q` parameter, roast names, and GitHub
+profile data) to LLMs, which makes prompt injection a real concern — especially
+for endpoints that ingest third-party content like `roast-github`.
+
+Defenses in place:
+
+- **Role separation + spotlighting.** Persona instructions and guardrails live
+  in the system prompt; untrusted user content is sent as a separate user
+  message wrapped in a random, per-request delimiter, with a system instruction
+  to treat anything inside it as content to react to — never as instructions.
+  This neutralizes "ignore your instructions" / prompt-exfiltration attempts.
+- **Provider safety thresholds.** Gemini's safety settings are set explicitly
+  (they default to off on recent models) to block genuinely harmful output
+  while still allowing playful edge.
+
+Planned: content moderation on input and generated output (see the open
+safety-hardening issue).
+
 ## Security Best Practices for Operators
 
 If you are deploying Snark:

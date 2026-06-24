@@ -53,6 +53,25 @@ class GeminiProvider(AIProvider):
     def is_available(self) -> bool:
         return self._client is not None
 
+    def _safety_settings(self):
+        """Gemini 2.5/3 default safety thresholds are effectively OFF, so set
+        them explicitly. BLOCK_ONLY_HIGH lets mild roast edginess through while
+        still blocking genuinely harmful content."""
+        from google.genai import types
+
+        return [
+            types.SafetySetting(
+                category=category,
+                threshold=types.HarmBlockThreshold.BLOCK_ONLY_HIGH,
+            )
+            for category in (
+                types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+            )
+        ]
+
     def generate(
         self,
         system_prompt: str,
@@ -76,6 +95,7 @@ class GeminiProvider(AIProvider):
                     system_instruction=system_prompt,
                     temperature=temperature,
                     max_output_tokens=max_tokens,
+                    safety_settings=self._safety_settings(),
                 ),
             )
         except Exception as exc:
@@ -127,6 +147,7 @@ class GeminiProvider(AIProvider):
                     system_instruction=system_prompt,
                     temperature=temperature,
                     max_output_tokens=max_tokens,
+                    safety_settings=self._safety_settings(),
                 ),
             )
             for chunk in stream:
