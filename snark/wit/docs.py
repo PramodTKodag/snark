@@ -571,6 +571,38 @@ ROAST_GITHUB_DESC = (
     "}\n```"
 )
 
+BATCH_DESC = (
+    "Run several personas in a single request. POST a list of up to 5 items, "
+    "each naming a `persona` slug (see `/v1/wit/personas/`) plus the same "
+    "optional `q`, `mood`, `length`, and `lang` fields the individual endpoints "
+    "accept. Results come back in the same order. Each item is generated "
+    "independently, so one bad persona slug yields a per-item error without "
+    "failing the rest of the batch.\n\n"
+    "Note: each item is a separate LLM call, so a batch is slower than a single "
+    "request and counts as one hit against the rate limit.\n\n"
+    "**When to use:** You want a roast, a commit message, and a hot take in one "
+    "round trip.\n\n"
+    "**Example request:**\n"
+    "```\nPOST /v1/wit/batch/\n"
+    "Content-Type: application/json\n\n"
+    "{\n"
+    '  "requests": [\n'
+    '    {"persona": "roast", "q": "Dave"},\n'
+    '    {"persona": "commit-message"},\n'
+    '    {"persona": "hot-take", "q": "tabs vs spaces", "mood": "spicy"}\n'
+    "  ]\n}\n```\n\n"
+    "**Example response:**\n"
+    "```json\n{\n"
+    '  "results": [\n'
+    '    {"response": "Dave, you...", "persona": "The Friendly Roaster", '
+    '"cached": false},\n'
+    '    {"response": "fix: it works now", "persona": "The Honest Committer", '
+    '"cached": false},\n'
+    '    {"response": "Tabs won...", "persona": "The Hot Take Machine", '
+    '"cached": false}\n'
+    "  ]\n}\n```"
+)
+
 STATS_DESC = (
     "Aggregate usage statistics for the service — total responses generated, "
     "total tokens spent, and the most-used personas. Contains no user input or "

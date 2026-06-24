@@ -31,3 +31,7 @@ LENGTH_MAX_TOKENS = {
 
 # Upper bound on the free-text `lang` query param to keep prompts bounded.
 MAX_LANG_LENGTH = 30
+
+# Maximum number of items allowed in a single /batch/ request. Each item is a
+# separate LLM call, so this bounds the cost and latency of one request.
+MAX_BATCH_SIZE = 5
