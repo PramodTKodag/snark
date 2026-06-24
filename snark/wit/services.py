@@ -3,7 +3,7 @@ import logging
 
 from django.core.cache import cache
 
-from .constants import ALLOWED_MOODS
+from .constants import ALLOWED_LENGTHS, ALLOWED_MOODS, LENGTH_MAX_TOKENS
 from .models import Persona, ResponseLog
 from .providers import ProviderRegistry
 from .providers.base import ContentFilterError, ProviderError
@@ -25,24 +25,34 @@ class PersonaNotFoundError(Exception):
 
 class WitService:
     @staticmethod
-    def generate(slug: str, user_input: str = "", mood: str | None = None) -> dict:
+    def generate(
+        slug: str,
+        user_input: str = "",
+        mood: str | None = None,
+        length: str | None = None,
+        lang: str | None = None,
+    ) -> dict:
         if mood and mood not in ALLOWED_MOODS:
             mood = None
+        if length and length not in ALLOWED_LENGTHS:
+            length = None
+        lang = (lang or "").strip() or None
         persona = WitService._load_persona(slug)
 
-        cache_key = WitService._response_cache_key(slug, user_input, mood)
+        cache_key = WitService._response_cache_key(slug, user_input, mood, length, lang)
         cached = cache.get(cache_key)
         if cached:
             return {"response": cached, "persona": persona.name, "cached": True}
 
-        system_prompt = WitService._build_prompt(persona, mood)
+        system_prompt = WitService._build_prompt(persona, mood, length, lang)
         user_prompt = user_input or "Generate a response."
+        max_tokens = LENGTH_MAX_TOKENS.get(length, persona.max_tokens)
 
         ai_response = WitService._generate_with_fallback(
             system_prompt=system_prompt,
             user_prompt=user_prompt,
             temperature=persona.temperature,
-            max_tokens=persona.max_tokens,
+            max_tokens=max_tokens,
         )
 
         ResponseLog.objects.create(
@@ -127,7 +137,12 @@ class WitService:
         return persona
 
     @staticmethod
-    def _build_prompt(persona: Persona, mood: str | None = None) -> str:
+    def _build_prompt(
+        persona: Persona,
+        mood: str | None = None,
+        length: str | None = None,
+        lang: str | None = None,
+    ) -> str:
         recent = (
             ResponseLog.objects.filter(persona=persona)
             .order_by("-created_at")
@@ -145,6 +160,22 @@ class WitService:
                 "This takes priority over your default tone."
             )
 
+        length_text = ""
+        if length:
+            length_hint = {
+                "short": "Keep it very short — a single punchy line.",
+                "medium": "A moderate length is fine — a few sentences.",
+                "long": "Go longer and add more detail, but stay funny.",
+            }[length]
+            length_text = f"\n\nLENGTH: {length_hint}"
+
+        lang_text = ""
+        if lang:
+            lang_text = (
+                f"\n\nLANGUAGE: Write your entire response in {lang}. "
+                "Do not add an English translation."
+            )
+
         anti_rep = ""
         if recent:
             samples = list(recent)
@@ -159,12 +190,18 @@ class WitService:
             "No fancy words, no jargon, no filler. Write like you're texting a friend."
         )
         return (
-            f"{persona.system_prompt}{tone_descriptor}{mood_text}"
-            f"{tone_guide}{rules_block}{anti_rep}"
+            f"{persona.system_prompt}{tone_descriptor}{mood_text}{length_text}"
+            f"{lang_text}{tone_guide}{rules_block}{anti_rep}"
         )
 
     @staticmethod
-    def _response_cache_key(slug: str, user_input: str, mood: str | None = None) -> str:
-        raw = f"{slug}:{user_input}:{mood or ''}"
+    def _response_cache_key(
+        slug: str,
+        user_input: str,
+        mood: str | None = None,
+        length: str | None = None,
+        lang: str | None = None,
+    ) -> str:
+        raw = f"{slug}:{user_input}:{mood or ''}:{length or ''}:{lang or ''}"
         digest = hashlib.sha256(raw.encode()).hexdigest()[:16]
         return f"wit:resp:{digest}"

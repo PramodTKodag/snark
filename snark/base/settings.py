@@ -221,6 +221,7 @@ SPECTACULAR_SETTINGS = {
     "SCHEMA_PATH_PREFIX": f"/{API_PREFIX}/",
     "TAGS": [
         {"name": "Wit", "description": "AI-powered humor endpoints"},
+        {"name": "Meta", "description": "Persona discovery and usage stats"},
         {"name": "Health", "description": "Service health probes"},
     ],
     "SWAGGER_UI_SETTINGS": {

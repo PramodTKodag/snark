@@ -516,6 +516,78 @@ DEBUG_STORY_DESC = (
     "}\n```"
 )
 
+# ---------------------------------------------------------------------------
+# Discovery & meta endpoints
+# ---------------------------------------------------------------------------
+
+PERSONAS_DESC = (
+    "Lists every available persona — the full menu of humor endpoints in one "
+    "call. Each entry includes the `slug` (which maps to its endpoint at "
+    "`/v1/wit/<slug>/`), a display `name`, and the persona's `tone`. Handy for "
+    "building clients, dropdowns, or a 'random' feature.\n\n"
+    "**When to use:** You want to discover what this API can do without reading docs.\n\n"
+    "**Example request:**\n"
+    "```\nGET /v1/wit/personas/\n```\n\n"
+    "**Example response:**\n"
+    "```json\n[\n"
+    '  {"slug": "roast", "name": "The Friendly Roaster", "tone": "playful"},\n'
+    '  {"slug": "hot-take", "name": "The Hot Take Machine", "tone": "provocative"}\n'
+    "]\n```"
+)
+
+RANDOM_DESC = (
+    "Surprise me — picks a random active persona and returns a fresh response "
+    "from it. Accepts the same optional `q`, `mood`, `length`, and `lang` "
+    "parameters as every other endpoint; the `persona` field in the response "
+    "tells you which one fired.\n\n"
+    "**When to use:** You want a dose of wit but don't care which kind.\n\n"
+    "**Example request:**\n"
+    "```\nGET /v1/wit/random/\nGET /v1/wit/random/?q=mondays&mood=unhinged\n```\n\n"
+    "**Example response:**\n"
+    "```json\n{\n"
+    '  "response": "TL;DR: Mondays are just Sundays with a job attached.",\n'
+    '  "persona": "The Brutal Summarizer",\n'
+    '  "cached": false\n'
+    "}\n```"
+)
+
+ROAST_GITHUB_DESC = (
+    "Roasts a developer based on their public GitHub profile. Give it a "
+    "username and it pulls their public stats (repos, followers, bio, account "
+    "age) and serves a playful, clever roast. The `username` path parameter is "
+    "validated to GitHub's allowed characters.\n\n"
+    "Returns **404** if the user does not exist, **503** if GitHub can't be "
+    "reached (the public API is rate-limited to 60 requests/hour per IP).\n\n"
+    "**When to use:** You want to gently roast yourself or a teammate.\n\n"
+    "**Example request:**\n"
+    "```\nGET /v1/wit/roast-github/torvalds/\n"
+    "GET /v1/wit/roast-github/octocat/?mood=dramatic\n```\n\n"
+    "**Example response:**\n"
+    "```json\n{\n"
+    '  "response": "180k followers and you still push directly to master? '
+    'Bold leadership, Linus.",\n'
+    '  "persona": "The Friendly Roaster",\n'
+    '  "cached": false\n'
+    "}\n```"
+)
+
+STATS_DESC = (
+    "Aggregate usage statistics for the service — total responses generated, "
+    "total tokens spent, and the most-used personas. Contains no user input or "
+    "personal data, only counts.\n\n"
+    "**When to use:** You're curious which personas are most popular.\n\n"
+    "**Example request:**\n"
+    "```\nGET /v1/wit/stats/\n```\n\n"
+    "**Example response:**\n"
+    "```json\n{\n"
+    '  "total_responses": 12480,\n'
+    '  "total_tokens": 1893400,\n'
+    '  "personas": [\n'
+    '    {"slug": "roast", "name": "The Friendly Roaster", "count": 3120},\n'
+    '    {"slug": "hot-take", "name": "The Hot Take Machine", "count": 2010}\n'
+    "  ]\n}\n```"
+)
+
 PROVERB_DESC = (
     "Generates proverbs that sound ancient but are about modern life. "
     "Has the cadence of Confucius, the gravitas of Marcus Aurelius, and the subject "

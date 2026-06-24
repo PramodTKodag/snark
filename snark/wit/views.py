@@ -27,21 +27,34 @@ from .docs import (
     MEETING_EXCUSE_DESC,
     MOTIVATION_DESC,
     NAME_SUGGESTION_DESC,
+    PERSONAS_DESC,
     PICKUP_LINE_DESC,
     PROVERB_DESC,
+    RANDOM_DESC,
     RANDOM_EXCUSE_DESC,
     RATE_ANYTHING_DESC,
     ROAST_DESC,
+    ROAST_GITHUB_DESC,
     SAY_NO_DESC,
     SOCIAL_BIO_DESC,
     STANDUP_UPDATE_DESC,
+    STATS_DESC,
     TECH_BATTLE_DESC,
     TLDR_DESC,
     WORTH_IT_DESC,
 )
+from .github import (
+    GitHubError,
+    GitHubUserNotFoundError,
+    build_roast_context,
+    fetch_profile,
+)
+from .models import Persona, ResponseLog
 from .providers.base import ProviderError
 from .serializers import (
     HealthResponseSerializer,
+    PersonaListItemSerializer,
+    StatsResponseSerializer,
     WitQuerySerializer,
     WitResponseSerializer,
 )
@@ -81,11 +94,17 @@ class BaseWitView(APIView):
             )
         query = params.validated_data.get("q", "")
         mood = params.validated_data.get("mood") or None
+        length = params.validated_data.get("length") or None
+        lang = params.validated_data.get("lang") or None
         effective_input = user_input if user_input is not None else query
 
         try:
             result = WitService.generate(
-                slug=slug, user_input=effective_input, mood=mood
+                slug=slug,
+                user_input=effective_input,
+                mood=mood,
+                length=length,
+                lang=lang,
             )
             return Response(result, status=status.HTTP_200_OK)
         except PersonaNotFoundError:
@@ -128,6 +147,20 @@ _MOOD_PARAM = OpenApiParameter(
     required=False,
     description="Response mood. One of: " + ", ".join(sorted(ALLOWED_MOODS)),
 )
+_LENGTH_PARAM = OpenApiParameter(
+    "length",
+    str,
+    OpenApiParameter.QUERY,
+    required=False,
+    description="Response length preset. One of: short, medium, long.",
+)
+_LANG_PARAM = OpenApiParameter(
+    "lang",
+    str,
+    OpenApiParameter.QUERY,
+    required=False,
+    description="Language to respond in (e.g. Spanish, French). Defaults to English.",
+)
 
 
 # ---------------------------------------------------------------------------
@@ -139,7 +172,7 @@ _MOOD_PARAM = OpenApiParameter(
     tags=["Wit"],
     summary="Creative excuse to say no",
     description=SAY_NO_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
     responses={200: WitResponseSerializer},
 )
 class SayNoView(BaseWitView):
@@ -151,7 +184,7 @@ class SayNoView(BaseWitView):
     tags=["Wit"],
     summary="Random excuse generator",
     description=RANDOM_EXCUSE_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
     responses={200: WitResponseSerializer},
 )
 class RandomExcuseView(BaseWitView):
@@ -163,7 +196,7 @@ class RandomExcuseView(BaseWitView):
     tags=["Wit"],
     summary="Corporate jargon generator",
     description=CORPORATE_JARGON_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
     responses={200: WitResponseSerializer},
 )
 class CorporateJargonView(BaseWitView):
@@ -175,7 +208,7 @@ class CorporateJargonView(BaseWitView):
     tags=["Wit"],
     summary="Honest git commit message",
     description=COMMIT_MESSAGE_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
     responses={200: WitResponseSerializer},
 )
 class CommitMessageView(BaseWitView):
@@ -187,7 +220,7 @@ class CommitMessageView(BaseWitView):
     tags=["Wit"],
     summary="Spicy hot take on anything",
     description=HOT_TAKE_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
     responses={200: WitResponseSerializer},
 )
 class HotTakeView(BaseWitView):
@@ -199,7 +232,7 @@ class HotTakeView(BaseWitView):
     tags=["Wit"],
     summary="Wholesome compliment",
     description=COMPLIMENT_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
     responses={200: WitResponseSerializer},
 )
 class ComplimentView(BaseWitView):
@@ -211,7 +244,7 @@ class ComplimentView(BaseWitView):
     tags=["Wit"],
     summary="Who to blame when things go wrong",
     description=BUG_BLAME_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
     responses={200: WitResponseSerializer},
 )
 class BugBlameView(BaseWitView):
@@ -227,6 +260,8 @@ class BugBlameView(BaseWitView):
         OpenApiParameter("name", str, OpenApiParameter.PATH),
         _Q_PARAM,
         _MOOD_PARAM,
+        _LENGTH_PARAM,
+        _LANG_PARAM,
     ],
     responses={200: WitResponseSerializer},
 )
@@ -257,6 +292,8 @@ class RoastView(BaseWitView):
             description="What to evaluate",
         ),
         _MOOD_PARAM,
+        _LENGTH_PARAM,
+        _LANG_PARAM,
     ],
     responses={200: WitResponseSerializer},
 )
@@ -284,6 +321,8 @@ class WorthItView(BaseWitView):
             description="Topic to explain",
         ),
         _MOOD_PARAM,
+        _LENGTH_PARAM,
+        _LANG_PARAM,
     ],
     responses={200: WitResponseSerializer},
 )
@@ -307,7 +346,7 @@ class ExplainLikeIm5View(BaseWitView):
     tags=["Wit"],
     summary="Clever themed pickup lines",
     description=PICKUP_LINE_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
     responses={200: WitResponseSerializer},
 )
 class PickupLineView(BaseWitView):
@@ -319,7 +358,7 @@ class PickupLineView(BaseWitView):
     tags=["Wit"],
     summary="Social media bio generator",
     description=SOCIAL_BIO_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
     responses={200: WitResponseSerializer},
 )
 class SocialBioView(BaseWitView):
@@ -331,7 +370,7 @@ class SocialBioView(BaseWitView):
     tags=["Wit"],
     summary="Absurd motivational quote",
     description=MOTIVATION_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
     responses={200: WitResponseSerializer},
 )
 class MotivationView(BaseWitView):
@@ -343,7 +382,7 @@ class MotivationView(BaseWitView):
     tags=["Wit"],
     summary="Fortune cookie wisdom",
     description=FORTUNE_COOKIE_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
     responses={200: WitResponseSerializer},
 )
 class FortuneCookieView(BaseWitView):
@@ -364,6 +403,8 @@ class FortuneCookieView(BaseWitView):
             description="What you need to name",
         ),
         _MOOD_PARAM,
+        _LENGTH_PARAM,
+        _LANG_PARAM,
     ],
     responses={200: WitResponseSerializer},
 )
@@ -382,7 +423,7 @@ class NameSuggestionView(BaseWitView):
     tags=["Wit"],
     summary="Brutally honest status update",
     description=STANDUP_UPDATE_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
     responses={200: WitResponseSerializer},
 )
 class StandupUpdateView(BaseWitView):
@@ -394,7 +435,7 @@ class StandupUpdateView(BaseWitView):
     tags=["Wit"],
     summary="Passive-aggressive peer feedback",
     description=CODE_REVIEW_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
     responses={200: WitResponseSerializer},
 )
 class CodeReviewView(BaseWitView):
@@ -406,7 +447,7 @@ class CodeReviewView(BaseWitView):
     tags=["Wit"],
     summary="Meeting excuse or fake agenda",
     description=MEETING_EXCUSE_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
     responses={200: WitResponseSerializer},
 )
 class MeetingExcuseView(BaseWitView):
@@ -427,6 +468,8 @@ class MeetingExcuseView(BaseWitView):
             description="Phrase to translate",
         ),
         _MOOD_PARAM,
+        _LENGTH_PARAM,
+        _LANG_PARAM,
     ],
     responses={200: WitResponseSerializer},
 )
@@ -445,7 +488,7 @@ class JargonTranslatorView(BaseWitView):
     tags=["Wit"],
     summary="Incident post-mortem generator",
     description=INCIDENT_POSTMORTEM_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
     responses={200: WitResponseSerializer},
 )
 class IncidentPostmortemView(BaseWitView):
@@ -471,6 +514,8 @@ class IncidentPostmortemView(BaseWitView):
             description="Matchup (e.g. 'coffee vs tea')",
         ),
         _MOOD_PARAM,
+        _LENGTH_PARAM,
+        _LANG_PARAM,
     ],
     responses={200: WitResponseSerializer},
 )
@@ -497,6 +542,8 @@ class TechBattleView(BaseWitView):
             "q", str, OpenApiParameter.QUERY, required=True, description="What to rate"
         ),
         _MOOD_PARAM,
+        _LENGTH_PARAM,
+        _LANG_PARAM,
     ],
     responses={200: WitResponseSerializer},
 )
@@ -518,7 +565,7 @@ class RateAnythingView(BaseWitView):
     tags=["Wit"],
     summary="Modern horoscope",
     description=HOROSCOPE_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
     responses={200: WitResponseSerializer},
 )
 class HoroscopeView(BaseWitView):
@@ -539,6 +586,8 @@ class HoroscopeView(BaseWitView):
             description="What to summarize",
         ),
         _MOOD_PARAM,
+        _LENGTH_PARAM,
+        _LANG_PARAM,
     ],
     responses={200: WitResponseSerializer},
 )
@@ -560,7 +609,7 @@ class TldrView(BaseWitView):
     tags=["Wit"],
     summary="Absurd interview question",
     description=INTERVIEW_QUESTION_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
     responses={200: WitResponseSerializer},
 )
 class InterviewQuestionView(BaseWitView):
@@ -572,7 +621,7 @@ class InterviewQuestionView(BaseWitView):
     tags=["Wit"],
     summary="Honest changelog entry",
     description=HONEST_CHANGELOG_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
     responses={200: WitResponseSerializer},
 )
 class HonestChangelogView(BaseWitView):
@@ -584,7 +633,7 @@ class HonestChangelogView(BaseWitView):
     tags=["Wit"],
     summary="Troubleshooting narrator",
     description=DEBUG_STORY_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
     responses={200: WitResponseSerializer},
 )
 class DebugStoryView(BaseWitView):
@@ -596,12 +645,150 @@ class DebugStoryView(BaseWitView):
     tags=["Wit"],
     summary="Ancient modern proverb",
     description=PROVERB_DESC,
-    parameters=[_Q_PARAM, _MOOD_PARAM],
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
     responses={200: WitResponseSerializer},
 )
 class ProverbView(BaseWitView):
     def get(self, request):
         return self.handle_generate(request, "proverb")
+
+
+# ---------------------------------------------------------------------------
+# Discovery & meta endpoints
+# ---------------------------------------------------------------------------
+
+
+@extend_schema(
+    tags=["Meta"],
+    summary="List all available personas",
+    description=PERSONAS_DESC,
+    responses={200: PersonaListItemSerializer(many=True)},
+)
+class PersonaListView(APIView):
+    authentication_classes = []
+    permission_classes = []
+    throttle_classes = []
+
+    def get(self, request):
+        from django.core.cache import cache
+
+        cache_key = "wit:personas:list"
+        personas = cache.get(cache_key)
+        if personas is None:
+            personas = list(
+                Persona.objects.filter(is_active=True)
+                .order_by("name")
+                .values("slug", "name", "tone")
+            )
+            cache.set(cache_key, personas, 300)
+        return Response(personas)
+
+
+@extend_schema(
+    tags=["Wit"],
+    summary="Random persona — surprise me",
+    description=RANDOM_DESC,
+    parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM],
+    responses={200: WitResponseSerializer},
+)
+class RandomWitView(BaseWitView):
+    def get(self, request):
+        slug = (
+            Persona.objects.filter(is_active=True)
+            .order_by("?")
+            .values_list("slug", flat=True)
+            .first()
+        )
+        if not slug:
+            return Response(
+                {"error": "No personas available", "code": "persona_not_found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return self.handle_generate(request, slug)
+
+
+@extend_schema(
+    tags=["Wit"],
+    summary="Roast a GitHub profile",
+    description=ROAST_GITHUB_DESC,
+    parameters=[
+        OpenApiParameter("username", str, OpenApiParameter.PATH),
+        _MOOD_PARAM,
+        _LENGTH_PARAM,
+        _LANG_PARAM,
+    ],
+    responses={200: WitResponseSerializer},
+)
+class RoastGithubView(BaseWitView):
+    def get(self, request, username):
+        # GitHub usernames are alphanumeric or single hyphens, max 39 chars.
+        cleaned = re.sub(r"[^a-zA-Z0-9-]", "", username)[:39].strip("-")
+        if not cleaned:
+            return Response(
+                {"error": "Invalid GitHub username", "code": "invalid_request"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            profile = fetch_profile(cleaned)
+        except GitHubUserNotFoundError:
+            return Response(
+                {
+                    "error": f"GitHub user '{cleaned}' not found",
+                    "code": "github_user_not_found",
+                },
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except GitHubError as exc:
+            logger.warning("GitHub fetch failed for %s: %s", cleaned, exc)
+            return Response(
+                {"error": "Could not reach GitHub", "code": "github_unavailable"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        return self.handle_generate(
+            request, "roast", user_input=build_roast_context(profile)
+        )
+
+
+@extend_schema(
+    tags=["Meta"],
+    summary="Usage statistics",
+    description=STATS_DESC,
+    responses={200: StatsResponseSerializer},
+)
+class StatsView(APIView):
+    authentication_classes = []
+    permission_classes = []
+    throttle_classes = []
+
+    def get(self, request):
+        from django.core.cache import cache
+        from django.db.models import Count, Sum
+
+        cache_key = "wit:stats"
+        stats = cache.get(cache_key)
+        if stats is None:
+            agg = ResponseLog.objects.aggregate(
+                total=Count("id"), tokens=Sum("tokens_used")
+            )
+            top = (
+                ResponseLog.objects.values("persona__slug", "persona__name")
+                .annotate(count=Count("id"))
+                .order_by("-count")[:10]
+            )
+            stats = {
+                "total_responses": agg["total"] or 0,
+                "total_tokens": agg["tokens"] or 0,
+                "personas": [
+                    {
+                        "slug": row["persona__slug"],
+                        "name": row["persona__name"],
+                        "count": row["count"],
+                    }
+                    for row in top
+                ],
+            }
+            cache.set(cache_key, stats, 60)
+        return Response(stats)
 
 
 # ---------------------------------------------------------------------------
