@@ -43,6 +43,9 @@ class ErrorClient:
     async def roast(self, *a, **k):
         raise SnarkAPIError("Snark API error (503): AI service temporarily unavailable")
 
+    async def roast_github(self, *a, **k):
+        raise SnarkAPIError("Snark API error (503): AI service temporarily unavailable")
+
 
 @pytest.fixture
 def fake_client(monkeypatch):

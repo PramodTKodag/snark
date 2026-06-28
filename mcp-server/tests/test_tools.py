@@ -27,6 +27,14 @@ async def test_snark_roast_returns_formatted_dict(fake_client):
     assert ("roast", "Dave", "spicy") in fake_client.calls
 
 
+async def test_snark_roast_github_routes_correctly(fake_client):
+    async with Client(server.mcp) as client:
+        result = await client.call_tool("snark_roast_github", {"username": "torvalds", "mood": "dry"})
+    assert result.data["response"] == "github roast of torvalds"
+    assert result.data["persona"] == "The Friendly Roaster"
+    assert ("roast_github", "torvalds", "dry") in fake_client.calls
+
+
 async def test_snark_hot_take_maps_topic_to_q(fake_client):
     async with Client(server.mcp) as client:
         result = await client.call_tool("snark_hot_take", {"topic": "tabs vs spaces"})
@@ -70,3 +78,9 @@ async def test_tool_error_is_surfaced(error_client):
         result = await client.call_tool("snark_roast", {"name": "x"}, raise_on_error=False)
     assert result.is_error
     assert "temporarily unavailable" in str(result.content)
+
+
+async def test_snark_roast_github_error_is_surfaced(error_client):
+    async with Client(server.mcp) as client:
+        result = await client.call_tool("snark_roast_github", {"username": "x"}, raise_on_error=False)
+    assert result.is_error
