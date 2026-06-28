@@ -25,4 +25,4 @@ async def test_surface_is_read_only_and_named():
     assert not any(
         bad in n for n in names for bad in ("delete", "create", "update", "admin", "seed")
     )
-    assert len(names) == 8
+    assert len(names) == 9

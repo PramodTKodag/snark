@@ -133,6 +133,21 @@ async def snark_worth_it(thing: str, mood: Optional[Mood] = None) -> dict:
 
 
 @mcp.tool
+async def snark_rate_anything(thing: str, mood: Optional[Mood] = None) -> dict:
+    """Rate anything on a scale of 1-10 with an absurd justification.
+
+    Use when the user asks to rate, score, or grade something out of 10
+    (e.g. "rate pineapple on pizza", "rate my startup idea", "score this 1-10").
+    ``thing`` is what to rate. Returns a rating like "RATING: 7/10" with a short
+    justification and the persona.
+    """
+    try:
+        return _format(await _client.wit("rate-anything", q=thing, mood=mood))
+    except SnarkAPIError as exc:
+        raise ToolError(str(exc))
+
+
+@mcp.tool
 async def snark_wit(
     persona: str,
     q: str = "",
@@ -141,10 +156,34 @@ async def snark_wit(
 ) -> dict:
     """Generate humor from ANY Snark persona by its slug.
 
-    Use this for personas without a dedicated tool above (e.g. "fortune-cookie",
-    "proverb", "horoscope", "corporate-jargon", "compliment"). Call
-    ``snark_list_personas`` first to discover valid slugs. ``persona`` is the
-    slug; ``q`` is optional context; ``length`` is one of short/medium/long.
+    Use this for the personas that don't have a dedicated tool above. ``persona``
+    is the slug; ``q`` is the context/topic; ``length`` is short/medium/long.
+
+    Available slugs (call ``snark_list_personas`` for the authoritative list):
+    - say-no — a creative excuse to say no
+    - random-excuse — a plausible-sounding excuse
+    - corporate-jargon — meaningless corporate buzzword soup
+    - compliment — a wholesome, uplifting compliment
+    - bug-blame — who/what to blame for a bug
+    - explain-like-im-5 — explain a topic (q) very simply
+    - pickup-line — a themed pickup line
+    - social-bio — a social media bio
+    - motivation — an absurd motivational quote
+    - fortune-cookie — fortune-cookie wisdom
+    - name-suggestion — absurd name ideas for a thing (q)
+    - standup-update — a brutally honest standup update
+    - code-review — passive-aggressive peer feedback
+    - meeting-excuse — an excuse to skip a meeting
+    - jargon-translator — translate insider/outsider jargon (q)
+    - incident-postmortem — a corporate incident post-mortem
+    - tech-battle — judge X vs Y (q, e.g. "coffee vs tea")
+    - horoscope — a modern horoscope
+    - tldr — a brutally honest TL;DR of something (q)
+    - interview-question — an absurd interview question
+    - honest-changelog — an honest changelog entry
+    - debug-story — a noir narration of troubleshooting
+    - proverb — an ancient-sounding modern proverb
+
     Returns the generated text and persona.
     """
     try:

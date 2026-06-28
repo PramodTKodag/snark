@@ -3,7 +3,7 @@ from fastmcp import Client
 import snark_mcp.server as server
 
 
-async def test_lists_exactly_the_eight_tools():
+async def test_lists_exactly_the_expected_tools():
     async with Client(server.mcp) as client:
         tools = await client.list_tools()
     names = {t.name for t in tools}
@@ -14,9 +14,19 @@ async def test_lists_exactly_the_eight_tools():
         "snark_commit_message",
         "snark_reply",
         "snark_worth_it",
+        "snark_rate_anything",
         "snark_wit",
         "snark_list_personas",
     }
+
+
+async def test_snark_rate_anything_maps_to_rate_anything_persona(fake_client):
+    async with Client(server.mcp) as client:
+        result = await client.call_tool(
+            "snark_rate_anything", {"thing": "pineapple on pizza"}
+        )
+    assert result.data["response"] == "wit:rate-anything:pineapple on pizza"
+    assert fake_client.calls[-1][:3] == ("wit", "rate-anything", "pineapple on pizza")
 
 
 async def test_snark_roast_returns_formatted_dict(fake_client):
