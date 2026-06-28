@@ -46,6 +46,36 @@ async def test_roast_url_encodes_name():
 
 
 @respx.mock
+async def test_roast_encodes_slash_in_name():
+    route = respx.get(f"{BASE}/v1/wit/roast/a%2Fb/").mock(
+        return_value=httpx.Response(200, json={"response": "r", "persona": "p", "cached": False})
+    )
+    await _client().roast("a/b")
+    assert route.called
+    assert "%2F" in str(route.calls.last.request.url)
+
+
+@respx.mock
+async def test_roast_github_uses_hyphenated_path():
+    route = respx.get(f"{BASE}/v1/wit/roast-github/torvalds/").mock(
+        return_value=httpx.Response(200, json={"response": "r", "persona": "p", "cached": False})
+    )
+    await _client().roast_github("torvalds")
+    assert route.called
+
+
+@respx.mock
+async def test_worth_it_maps_thing_to_q():
+    route = respx.get(f"{BASE}/v1/wit/worth-it/").mock(
+        return_value=httpx.Response(
+            200, json={"response": "VERDICT: NO", "persona": "The Decision Oracle", "cached": False}
+        )
+    )
+    await _client().worth_it("a standing desk")
+    assert route.calls.last.request.url.params["q"] == "a standing desk"
+
+
+@respx.mock
 async def test_reply_posts_body():
     route = respx.post(f"{BASE}/v1/wit/reply/").mock(
         return_value=httpx.Response(200, json={"response": "lol", "persona": "The Reply Guy", "cached": False})

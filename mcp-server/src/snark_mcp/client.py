@@ -75,12 +75,12 @@ class SnarkClient:
 
     async def roast(self, name, mood=None, length=None, lang=None) -> dict:
         return await self._get(
-            f"roast/{quote(name)}/", {"mood": mood, "length": length, "lang": lang}
+            f"roast/{quote(name, safe='')}/", {"mood": mood, "length": length, "lang": lang}
         )
 
     async def roast_github(self, username, mood=None, length=None, lang=None) -> dict:
         return await self._get(
-            f"roast-github/{quote(username)}/",
+            f"roast-github/{quote(username, safe='')}/",
             {"mood": mood, "length": length, "lang": lang},
         )
 
