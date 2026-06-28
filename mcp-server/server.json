@@ -1,0 +1,28 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.PramodTKodag/snark",
+  "description": "MCP server for the Snark humor API — roasts, hot takes, honest commit messages, and more.",
+  "version": "0.1.0",
+  "repository": {
+    "url": "https://github.com/PramodTKodag/snark",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "snark-mcp",
+      "version": "0.1.0",
+      "runtimeHint": "uvx",
+      "transport": { "type": "stdio" },
+      "environmentVariables": [
+        {
+          "name": "SNARK_API_URL",
+          "description": "Base URL of the Snark REST API",
+          "isRequired": false,
+          "isSecret": false
+        }
+      ]
+    }
+  ]
+}
