@@ -73,6 +73,18 @@ jobs:
       - name: Run tests
         run: poetry run pytest --tb=short -q
 
+  mcp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.10"
+      - name: Install snark-mcp
+        run: pip install -e "./mcp-server[dev]"
+      - name: Run snark-mcp tests
+        run: cd mcp-server && pytest -v
+
   audit:
     runs-on: ubuntu-latest
     steps:

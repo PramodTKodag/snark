@@ -10,4 +10,5 @@ exclude =
     */migrations/*,
     */venv/*,
     build,
-    dist
+    dist,
+    mcp-server

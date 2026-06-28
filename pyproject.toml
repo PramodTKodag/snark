@@ -50,6 +50,9 @@ pip-audit = "^2.7.0"
 DJANGO_SETTINGS_MODULE = "base.settings"
 python_files = ["test_*.py", "*_test.py"]
 pythonpath = ["snark"]
+# Only the Django app's tests run here; mcp-server is a standalone package with
+# its own suite (the `mcp` CI job), so keep it out of this collection.
+testpaths = ["snark"]
 addopts = "-v --tb=short"
 
 [[tool.poetry.packages]]
@@ -67,6 +70,7 @@ extend-exclude = '''
   | \.venv
   | build
   | dist
+  | mcp-server
 )/
 '''
 
@@ -78,6 +82,7 @@ force_grid_wrap = 0
 use_parentheses = true
 line_length = 88
 skip_glob = ["*/migrations/*"]
+extend_skip = ["mcp-server"]
 
 # flake8 config lives in .flake8 (flake8 does not read pyproject.toml).
 

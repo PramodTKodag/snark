@@ -245,6 +245,22 @@ snark stats
 
 The first positional argument is a persona slug (or one of `personas`, `stats`, `random`, `roast <name>`, `github <username>`); the second is optional context. It points at `http://localhost:8100` by default — override with `--api` or the `SNARK_API_URL` environment variable.
 
+## Use it from AI agents (MCP)
+
+Snark ships an [MCP](https://modelcontextprotocol.io) server (`snark-mcp`, in [`mcp-server/`](mcp-server/)) so AI assistants — **Claude Code, Claude Desktop, Cursor**, and other MCP clients — can call snark as native tools. It's a thin client over this same REST API: point it at a running instance with `SNARK_API_URL`.
+
+It exposes a curated set of tools — `snark_roast`, `snark_roast_github`, `snark_hot_take`, `snark_commit_message`, `snark_reply`, `snark_worth_it`, `snark_wit` (any persona by slug), and `snark_list_personas` — so you can just ask *"roast the GitHub user torvalds"* in your assistant and it calls the right one.
+
+Quickest path with **Claude Code** (per-project, private to you):
+
+```bash
+make mcp-install   # build the server into mcp-server/.venv
+claude mcp add snark -e SNARK_API_URL=http://localhost:8100 \
+  -- "$(pwd)/mcp-server/.venv/bin/snark-mcp"
+```
+
+Restart the session and the tools are available. See [`mcp-server/README.md`](mcp-server/README.md) for Claude Desktop / Cursor configs, the `make mcp` / `make mcp-http` / `make mcp-inspect` run modes, and details.
+
 ## Architecture
 
 ```
