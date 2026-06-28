@@ -34,10 +34,17 @@ class SnarkClient:
     def _parse(resp: httpx.Response) -> Any:
         if resp.is_success:
             return resp.json()
-        try:
-            message = resp.json().get("error", resp.text)
-        except Exception:
-            message = resp.text or f"HTTP {resp.status_code}"
+        # Only trust a JSON error body (the API's {"error": ...} shape). Non-JSON
+        # bodies (e.g. an HTML 404 page from an unrouted slug) would otherwise dump
+        # a whole page into the model's context, so fall back to the status code.
+        message = ""
+        if "application/json" in resp.headers.get("content-type", ""):
+            try:
+                message = resp.json().get("error", "")
+            except Exception:
+                message = ""
+        if not message:
+            message = f"HTTP {resp.status_code}"
         raise SnarkAPIError(f"Snark API error ({resp.status_code}): {message}")
 
     async def _get(self, path: str, params: dict | None = None) -> Any:

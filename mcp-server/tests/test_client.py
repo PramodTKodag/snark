@@ -113,3 +113,19 @@ async def test_network_error_raises_snark_api_error():
     with pytest.raises(SnarkAPIError) as exc:
         await _client().wit("hot-take")
     assert "Could not reach" in str(exc.value)
+
+
+@respx.mock
+async def test_html_error_body_is_not_dumped():
+    # An unrouted slug returns Django's HTML 404 page, not JSON. The whole page
+    # must not end up in the error message — just the status.
+    respx.get(f"{BASE}/v1/wit/does-not-exist/").mock(
+        return_value=httpx.Response(
+            404, html="<!DOCTYPE html><html><body>Page not found (404)</body></html>"
+        )
+    )
+    with pytest.raises(SnarkAPIError) as exc:
+        await _client().wit("does-not-exist")
+    msg = str(exc.value)
+    assert "HTTP 404" in msg
+    assert "DOCTYPE" not in msg and "<html" not in msg
