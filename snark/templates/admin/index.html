@@ -5,6 +5,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 {{ chart_over_time|json_script:"chart-over-time-data" }}
 {{ chart_providers|json_script:"chart-providers-data" }}
+{{ chart_personas|json_script:"chart-personas-data" }}
 {% endblock %}
 
 {% block extrastyle %}{{ block.super }}
@@ -224,6 +225,7 @@
       <div class="snark-panel">
         <h3>{% translate "Top personas" %}</h3>
         {% if top_personas %}
+        <div class="snark-chart-box"><canvas id="chart-personas"></canvas></div>
         <table class="snark-table">
           <thead>
             <tr>
@@ -459,6 +461,32 @@
         maintainAspectRatio: false,
         cutout: "58%",
         plugins: { legend: { position: "bottom" } }
+      }
+    });
+  }
+
+  // --- Top personas by requests (horizontal bar) ------------------------
+  var pers = readJSON("chart-personas-data");
+  var persCanvas = document.getElementById("chart-personas");
+  if (pers && persCanvas && (pers.counts || []).length) {
+    new Chart(persCanvas, {
+      type: "bar",
+      data: {
+        labels: pers.labels || [],
+        datasets: [{
+          label: "Requests",
+          data: pers.counts || [],
+          backgroundColor: "rgba(99, 102, 241, 0.65)",
+          borderColor: "#6366f1",
+          borderWidth: 1
+        }]
+      },
+      options: {
+        indexAxis: "y",
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { x: { beginAtZero: true, title: { display: true, text: "Requests" } } },
+        plugins: { legend: { display: false } }
       }
     });
   }

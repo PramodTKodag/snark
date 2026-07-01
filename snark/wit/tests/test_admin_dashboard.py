@@ -155,3 +155,21 @@ def test_admin_index_requires_login(admin_urls, client):
     resp = client.get("/admin/", SERVER_NAME="localhost")
     assert resp.status_code == 302
     assert "/login" in resp["Location"]
+
+
+@pytest.mark.django_db
+def test_dashboard_persona_chart_payload(persona_no, persona_roast, admin_urls):
+    _log(persona_no)
+    _log(persona_no)
+    _log(persona_roast)
+    admin_user = get_user_model().objects.create_superuser(
+        "root3", "root3@example.com", "supersecret123"
+    )
+    request = RequestFactory().get("/")
+    request.user = admin_user
+    chart = snark_admin_site.index(request).context_data["chart_personas"]
+    assert set(chart) == {"labels", "counts"}
+    assert sum(chart["counts"]) == 3
+    # Ordered by request count desc: say-no (2 requests) before roast (1).
+    assert chart["counts"][0] == 2
+    assert chart["labels"][0] == persona_no.name

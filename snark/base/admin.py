@@ -21,6 +21,7 @@ class SnarkAdminSite(admin.AdminSite):
 
         over_time = stats.responses_over_time(14)
         breakdown = stats.provider_breakdown()
+        top_personas = stats.top_personas(10)
         extra = dict(extra_context or {})
         extra.update(
             {
@@ -30,7 +31,7 @@ class SnarkAdminSite(admin.AdminSite):
                 "provider_breakdown": breakdown,
                 "model_usage": stats.model_usage(),
                 "latency": stats.latency_stats(),
-                "top_personas": stats.top_personas(10),
+                "top_personas": top_personas,
                 "unused_personas": stats.unused_personas(),
                 "recent": stats.recent_activity(15),
                 "health": stats.system_health(),
@@ -44,6 +45,10 @@ class SnarkAdminSite(admin.AdminSite):
                 "chart_providers": {
                     "labels": [row["provider"] for row in breakdown],
                     "counts": [row["count"] for row in breakdown],
+                },
+                "chart_personas": {
+                    "labels": [row["name"] for row in top_personas],
+                    "counts": [row["count"] for row in top_personas],
                 },
             }
         )
