@@ -214,6 +214,12 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "AI-Powered Humor & Utility API — every response uniquely generated.",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    # Keep the default enum hook; also drop text/event-stream (the SSE shim
+    # renderer) from the documented bodies — it's runtime-only, not a JSON body.
+    "POSTPROCESSING_HOOKS": [
+        "drf_spectacular.hooks.postprocess_schema_enums",
+        "base.schema.remove_event_stream_media_type",
+    ],
     "SWAGGER_UI_DIST": "SIDECAR",
     "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
     "REDOC_DIST": "SIDECAR",

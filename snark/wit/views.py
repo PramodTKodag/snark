@@ -98,7 +98,10 @@ class EventStreamRenderer(BaseRenderer):
     charset = None
 
     def render(self, data, accepted_media_type=None, renderer_context=None):
-        return data
+        # Streaming bypasses this (it returns a StreamingHttpResponse directly),
+        # so this only runs for a non-stream request that set
+        # Accept: text/event-stream. Return valid JSON bytes, not the raw dict.
+        return json.dumps(data).encode()
 
 
 class BaseWitView(APIView):
