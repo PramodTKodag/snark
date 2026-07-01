@@ -90,6 +90,19 @@ class TestGetRates:
         settings.PROVIDER_TOKEN_COST = {"claude": 1.5}
         assert pricing.get_rates("claude", "any") == pytest.approx((1.5e-6, 1.5e-6))
 
+    def test_malformed_override_is_skipped_not_crash(self, monkeypatch, settings):
+        # A bad rate must be skipped, not raise at render time; the valid part
+        # still parses and the map still resolves other providers.
+        settings.PROVIDER_TOKEN_COST = "claude:abc,groq:1:2"
+        monkeypatch.setattr(
+            pricing,
+            "_price_map",
+            lambda: {"claude-haiku": {"input": 9.9, "output": 9.9}},
+        )
+        assert pricing.get_rates("groq", "x") == pytest.approx((1e-6, 2e-6))
+        # claude's malformed override skipped -> falls back to the map, no crash
+        assert pricing.get_rates("claude", "claude-haiku") == (9.9, 9.9)
+
 
 class TestHasPricing:
     def test_true_when_map_non_empty(self, monkeypatch, settings):

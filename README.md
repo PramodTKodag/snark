@@ -356,6 +356,9 @@ into input vs output. `PROVIDER_TOKEN_COST` is an optional override (empty by
 default): `provider:input:output` per $1M (e.g. `claude:1:5`), or legacy
 `provider:blended` applied to both. It remains an **estimate** — blended
 cached/batch rates aren't applied, and streamed responses still log 0 tokens.
+Rates are cached for the process lifetime, so restart the app after
+`make update-pricing`. Responses logged before this feature carry no
+input/output split, so their estimated cost shows $0.
 
 On startup the stack runs `ensure_admin`, which creates/updates the superuser
 from those vars (a no-op when unset). Or create one manually:

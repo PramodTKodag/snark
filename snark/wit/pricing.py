@@ -7,10 +7,13 @@ correct prices without a redeploy. All rates are dollars per single token.
 """
 
 import json
+import logging
 from functools import lru_cache
 from pathlib import Path
 
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 _DATA = Path(__file__).resolve().parent / "pricing_data.json"
 
@@ -35,11 +38,19 @@ def _env_overrides() -> dict:
     out = {}
     for part in str(raw).split(","):
         bits = [b.strip() for b in part.split(":")]
-        if len(bits) == 2 and bits[0]:
-            rate = float(bits[1]) / 1_000_000
-            out[bits[0]] = (rate, rate)
-        elif len(bits) == 3 and bits[0]:
-            out[bits[0]] = (float(bits[1]) / 1_000_000, float(bits[2]) / 1_000_000)
+        try:
+            if len(bits) == 2 and bits[0]:
+                rate = float(bits[1]) / 1_000_000
+                out[bits[0]] = (rate, rate)
+            elif len(bits) == 3 and bits[0]:
+                out[bits[0]] = (
+                    float(bits[1]) / 1_000_000,
+                    float(bits[2]) / 1_000_000,
+                )
+        except ValueError:
+            # A misconfigured override must not crash the dashboard at render
+            # time; skip the bad entry and keep the rest.
+            logger.warning("Ignoring malformed PROVIDER_TOKEN_COST entry: %r", part)
     return out
 
 
