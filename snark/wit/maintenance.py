@@ -8,7 +8,7 @@ from datetime import timedelta
 
 from django.utils import timezone
 
-from .models import ResponseLog
+from .models import GenerationEvent, ResponseLog
 
 
 def prune_response_logs(days: int) -> int:
@@ -17,4 +17,13 @@ def prune_response_logs(days: int) -> int:
         raise ValueError("days must be >= 0")
     cutoff = timezone.now() - timedelta(days=days)
     deleted, _ = ResponseLog.objects.filter(created_at__lt=cutoff).delete()
+    return deleted
+
+
+def prune_generation_events(days: int) -> int:
+    """Delete GenerationEvent rows older than ``days``. Returns count deleted."""
+    if days < 0:
+        raise ValueError("days must be >= 0")
+    cutoff = timezone.now() - timedelta(days=days)
+    deleted, _ = GenerationEvent.objects.filter(created_at__lt=cutoff).delete()
     return deleted

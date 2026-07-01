@@ -335,6 +335,9 @@ All configuration is via environment variables. See `.env.example` for the full 
 | `ADMIN_URL` | `admin/` | Path the admin mounts at when enabled (change it) |
 | `ADMIN_USERNAME` / `ADMIN_EMAIL` / `ADMIN_PASSWORD` | — | Optional superuser auto-bootstrap on startup |
 | `PROVIDER_TOKEN_COST` | — (empty) | Optional price override for the dashboard cost estimate: `provider:input:output` per $1M (e.g. `claude:1:5`), or legacy `provider:blended`. Empty uses the vendored LiteLLM map (`make update-pricing`) |
+| `RESPONSE_LOG_RETENTION_DAYS` | `30` | Days to keep raw request logs (`ResponseLog`); `0` keeps them forever |
+| `GENERATION_EVENT_RETENTION_DAYS` | `90` | Days to keep reliability events (`GenerationEvent`); `0` keeps them forever |
+| `LOG_INPUT_MODE` | `redacted` | How to store user input: `redacted` (strip structured PII + truncate), `none` (don't store), or `raw` (verbatim) |
 
 > **Behind a reverse proxy?** Set `USE_PROXY_SSL_HEADER=True` and `NUM_PROXIES=<n>` so HTTPS detection and per-IP rate limiting work correctly. Leave both unset for direct connections.
 
@@ -349,6 +352,33 @@ starve normal JSON traffic — excess streams get a fast `503` with a
 cap). Keep it below `GUNICORN_THREADS` to leave threads free for JSON requests.
 For heavy sustained streaming load, an async worker (gevent) or an ASGI server is
 the future scale-up.
+
+### Data retention & privacy
+
+Snark is **privacy-forward by default**: bounded retention is on out of the box
+and raw user input is not stored verbatim.
+
+- **Bounded retention.** Request logs (`ResponseLog`) are kept 30 days and
+  reliability events (`GenerationEvent`) 90 days by default. Tune with
+  `RESPONSE_LOG_RETENTION_DAYS` / `GENERATION_EVENT_RETENTION_DAYS` (`0` = keep
+  forever).
+- **PII-minimized input.** `LOG_INPUT_MODE=redacted` (the default) strips
+  structured PII (email, phone, credit-card, SSN-like) from stored input and
+  truncates it. Set `none` to store nothing, or `raw` to store input verbatim
+  (opt-in — users may paste PII). Redaction is dependency-light and catches
+  **structured** identifiers only, not free-text names/addresses; Microsoft
+  Presidio (NER) is an optional upgrade if you need that.
+
+Pruning runs automatically on startup and can be run on demand or from cron:
+
+```bash
+make prune-logs DAYS=90          # apply a 90-day window to both tables
+# cron (daily at 03:00): apply the configured retention windows
+0 3 * * * cd /app/snark && python manage.py prune_logs
+```
+
+Stats and anti-repetition never read the input field, so redaction does not
+affect them.
 
 ## Admin panel (optional)
 
