@@ -1,0 +1,528 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block extrahead %}{{ block.super }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{{ chart_over_time|json_script:"chart-over-time-data" }}
+{{ chart_providers|json_script:"chart-providers-data" }}
+{{ chart_personas|json_script:"chart-personas-data" }}
+{% endblock %}
+
+{% block extrastyle %}{{ block.super }}
+<style>
+  /* --- Snark ops dashboard ------------------------------------------------ */
+  .snark-dash { margin-bottom: 32px; }
+  .snark-dash h2 {
+    font-size: 13px; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--body-quiet-color); margin: 28px 0 12px; font-weight: 700;
+  }
+  .snark-dash h2:first-of-type { margin-top: 4px; }
+
+  /* KPI cards */
+  .snark-kpis {
+    display: grid; gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+  .snark-card {
+    background: var(--body-bg); border: 1px solid var(--hairline-color);
+    border-radius: 10px; padding: 16px 18px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
+  }
+  .snark-card .label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--body-quiet-color); font-weight: 600;
+  }
+  .snark-card .value {
+    font-size: 30px; font-weight: 700; line-height: 1.15;
+    color: var(--body-fg); margin-top: 6px;
+  }
+  .snark-card .value small { font-size: 15px; color: var(--body-quiet-color); font-weight: 500; }
+  .snark-card .sub { font-size: 12px; color: var(--body-quiet-color); margin-top: 4px; }
+  .snark-card.accent { border-left: 4px solid var(--primary); }
+
+  /* Panels grid */
+  .snark-grid {
+    display: grid; gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    align-items: start;
+  }
+  .snark-panel {
+    background: var(--body-bg); border: 1px solid var(--hairline-color);
+    border-radius: 10px; padding: 18px 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .06);
+  }
+  .snark-panel h3 {
+    margin: 0 0 12px; font-size: 14px; font-weight: 700; color: var(--body-fg);
+  }
+  .snark-chart-box { position: relative; height: 280px; }
+
+  /* Tables */
+  table.snark-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.snark-table th, table.snark-table td {
+    text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--hairline-color);
+  }
+  table.snark-table th {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--body-quiet-color); font-weight: 700;
+  }
+  table.snark-table td.num, table.snark-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.snark-table tr:last-child td { border-bottom: none; }
+
+  /* Latency stat row */
+  .snark-stat-row { display: flex; gap: 24px; flex-wrap: wrap; }
+  .snark-stat { flex: 1 1 90px; }
+  .snark-stat .value { font-size: 24px; font-weight: 700; color: var(--body-fg); }
+  .snark-stat .label { font-size: 11px; text-transform: uppercase; color: var(--body-quiet-color); font-weight: 600; }
+
+  /* Badges & chips */
+  .badge {
+    display: inline-block; padding: 2px 9px; border-radius: 999px;
+    font-size: 11px; font-weight: 700; letter-spacing: .02em; line-height: 1.6;
+  }
+  .badge-ok { background: #dcfce7; color: #166534; }
+  .badge-bad { background: #fee2e2; color: #991b1b; }
+  .badge-default { background: var(--primary); color: #fff; }
+  .badge-muted { background: var(--darkened-bg); color: var(--body-quiet-color); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    background: var(--darkened-bg); border: 1px solid var(--hairline-color);
+    border-radius: 999px; padding: 4px 12px; font-size: 12px; color: var(--body-fg);
+  }
+  .snark-empty { color: var(--body-quiet-color); font-style: italic; font-size: 13px; }
+  .snark-muted { color: var(--body-quiet-color); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+  <div class="snark-dash">
+
+    {# 1. KPI cards #}
+    <h2>{% translate "Key metrics" %}</h2>
+    <div class="snark-kpis">
+      <div class="snark-card accent">
+        <div class="label">{% translate "Total responses" %}</div>
+        <div class="value">{{ kpis.total_responses }}</div>
+        <div class="sub">{{ kpis.last_24h }} {% translate "in last 24h" %}</div>
+      </div>
+      <div class="snark-card">
+        <div class="label">{% translate "Total tokens" %}</div>
+        <div class="value">{{ kpis.total_tokens }}</div>
+      </div>
+      <div class="snark-card">
+        <div class="label">{% translate "Avg latency" %}</div>
+        <div class="value">{{ kpis.avg_latency }}<small> ms</small></div>
+      </div>
+      <div class="snark-card">
+        <div class="label">{% translate "Last 24 hours" %}</div>
+        <div class="value">{{ kpis.last_24h }}</div>
+        <div class="sub">{% translate "responses" %}</div>
+      </div>
+      <div class="snark-card">
+        <div class="label">{% translate "Active personas" %}</div>
+        <div class="value">{{ kpis.active_personas }}<small> / {{ kpis.total_personas }}</small></div>
+      </div>
+      {% if cost.configured %}
+      <div class="snark-card accent">
+        <div class="label">{% translate "Est. cost" %}</div>
+        <div class="value">${{ cost.total }}</div>
+        <div class="sub">{% translate "blended token estimate" %}</div>
+      </div>
+      {% endif %}
+    </div>
+
+    {# 2. Charts #}
+    <h2>{% translate "Trends" %}</h2>
+    <div class="snark-grid">
+      <div class="snark-panel">
+        <h3>{% translate "Responses & tokens (14 days)" %}</h3>
+        <div class="snark-chart-box"><canvas id="chart-over-time"></canvas></div>
+      </div>
+      <div class="snark-panel">
+        <h3>{% translate "Provider share" %}</h3>
+        <div class="snark-chart-box"><canvas id="chart-providers"></canvas></div>
+      </div>
+    </div>
+
+    {# 3. Provider breakdown #}
+    <h2>{% translate "Providers & performance" %}</h2>
+    <div class="snark-grid">
+      <div class="snark-panel">
+        <h3>{% translate "Provider breakdown" %}</h3>
+        {% if provider_breakdown %}
+        <table class="snark-table">
+          <thead>
+            <tr>
+              <th>{% translate "Provider" %}</th>
+              <th class="num">{% translate "Count" %}</th>
+              <th class="num">{% translate "Share" %}</th>
+              <th class="num">{% translate "Avg ms" %}</th>
+              <th class="num">{% translate "Tokens" %}</th>
+              {% if cost.configured %}<th class="num">{% translate "Est. $" %}</th>{% endif %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in provider_breakdown %}
+            <tr>
+              <td>{{ row.provider }}</td>
+              <td class="num">{{ row.count }}</td>
+              <td class="num">{{ row.share }}%</td>
+              <td class="num">{{ row.avg_latency }}</td>
+              <td class="num">{{ row.tokens }}</td>
+              {% if cost.configured %}
+              <td class="num">{% for cp in cost.per_provider %}{% if cp.provider == row.provider %}${{ cp.cost }}{% endif %}{% endfor %}</td>
+              {% endif %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="snark-empty">{% translate "No responses logged yet." %}</p>
+        {% endif %}
+      </div>
+
+      {# 4. Latency panel #}
+      <div class="snark-panel">
+        <h3>{% translate "Latency" %}</h3>
+        <div class="snark-stat-row">
+          <div class="snark-stat">
+            <div class="value">{{ latency.avg }}<small class="snark-muted"> ms</small></div>
+            <div class="label">{% translate "Average" %}</div>
+          </div>
+          <div class="snark-stat">
+            <div class="value">{{ latency.p50 }}<small class="snark-muted"> ms</small></div>
+            <div class="label">{% translate "P50" %}</div>
+          </div>
+          <div class="snark-stat">
+            <div class="value">{{ latency.p95 }}<small class="snark-muted"> ms</small></div>
+            <div class="label">{% translate "P95" %}</div>
+          </div>
+          <div class="snark-stat">
+            <div class="value">{{ latency.p99 }}<small class="snark-muted"> ms</small></div>
+            <div class="label">{% translate "P99" %}</div>
+          </div>
+          <div class="snark-stat">
+            <div class="value">{{ latency.max }}<small class="snark-muted"> ms</small></div>
+            <div class="label">{% translate "Max" %}</div>
+          </div>
+        </div>
+        <p class="sub snark-muted" style="margin-top:14px;">
+          {% blocktranslate with n=latency.sample %}Percentiles over the most recent {{ n }} responses.{% endblocktranslate %}
+        </p>
+
+        {# 5. Model usage #}
+        <h3 style="margin-top:20px;">{% translate "Model usage" %}</h3>
+        {% if model_usage %}
+        <table class="snark-table">
+          <thead><tr><th>{% translate "Model" %}</th><th class="num">{% translate "Count" %}</th></tr></thead>
+          <tbody>
+            {% for m in model_usage %}
+            <tr><td>{{ m.model }}</td><td class="num">{{ m.count }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="snark-empty">{% translate "No model usage yet." %}</p>
+        {% endif %}
+      </div>
+    </div>
+
+    {# 6. Top personas #}
+    <h2>{% translate "Personas" %}</h2>
+    <div class="snark-grid">
+      <div class="snark-panel">
+        <h3>{% translate "Top personas" %}</h3>
+        {% if top_personas %}
+        <div class="snark-chart-box"><canvas id="chart-personas"></canvas></div>
+        <table class="snark-table">
+          <thead>
+            <tr>
+              <th>{% translate "Persona" %}</th>
+              <th class="num">{% translate "Count" %}</th>
+              <th class="num">{% translate "Avg ms" %}</th>
+              <th class="num">{% translate "Avg tokens" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in top_personas %}
+            <tr>
+              <td>{{ p.name }}<br><span class="snark-muted" style="font-size:11px;">{{ p.slug }}</span></td>
+              <td class="num">{{ p.count }}</td>
+              <td class="num">{{ p.avg_latency }}</td>
+              <td class="num">{{ p.avg_tokens }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="snark-empty">{% translate "No persona activity yet." %}</p>
+        {% endif %}
+      </div>
+
+      {# 7. Unused personas #}
+      <div class="snark-panel">
+        <h3>{% translate "Unused active personas" %}</h3>
+        {% if unused_personas %}
+        <div class="chips">
+          {% for p in unused_personas %}
+          <span class="chip" title="{{ p.slug }}">{{ p.name }}</span>
+          {% endfor %}
+        </div>
+        <p class="sub snark-muted" style="margin-top:12px;">
+          {% translate "Active personas that have never produced a response." %}
+        </p>
+        {% else %}
+        <p class="snark-empty">{% translate "None — every active persona has been used." %}</p>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if cost.configured %}
+    {# 7b. Estimated cost by persona #}
+    <h2>{% translate "Cost by persona" %}</h2>
+    <div class="snark-panel">
+      <table class="snark-table">
+        <thead>
+          <tr>
+            <th>{% translate "Persona" %}</th>
+            <th class="num">{% translate "Tokens" %}</th>
+            <th class="num">{% translate "Est. $" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in cost_by_persona %}
+          <tr>
+            <td>{{ p.name }}<br><span class="snark-muted" style="font-size:11px;">{{ p.slug }}</span></td>
+            <td class="num">{{ p.tokens }}</td>
+            <td class="num">${{ p.cost }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+
+    {# 8. Recent activity #}
+    <h2>{% translate "Recent activity" %}</h2>
+    <div class="snark-panel">
+      {% if recent %}
+      <table class="snark-table">
+        <thead>
+          <tr>
+            <th>{% translate "Persona" %}</th>
+            <th>{% translate "Provider" %}</th>
+            <th>{% translate "Model" %}</th>
+            <th class="num">{% translate "Latency" %}</th>
+            <th class="num">{% translate "Tokens" %}</th>
+            <th>{% translate "When" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in recent %}
+          <tr>
+            <td>{{ r.persona__slug }}</td>
+            <td>{{ r.provider_name }}</td>
+            <td>{{ r.model_name }}</td>
+            <td class="num">{{ r.latency_ms }} ms</td>
+            <td class="num">{{ r.tokens_used }}</td>
+            <td class="snark-muted">{{ r.created_at|date:"M j, H:i" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="snark-empty">{% translate "No activity logged yet." %}</p>
+      {% endif %}
+    </div>
+
+    {# 9. System health & providers #}
+    <h2>{% translate "System" %}</h2>
+    <div class="snark-grid">
+      <div class="snark-panel">
+        <h3>{% translate "Health" %}</h3>
+        <table class="snark-table">
+          <tbody>
+            <tr>
+              <td>{% translate "Database" %}</td>
+              <td class="num">
+                {% if health.database == "healthy" %}
+                <span class="badge badge-ok">{% translate "healthy" %}</span>
+                {% else %}
+                <span class="badge badge-bad">{% translate "unhealthy" %}</span>
+                {% endif %}
+              </td>
+            </tr>
+            <tr>
+              <td>{% translate "Redis" %}</td>
+              <td class="num">
+                {% if health.redis == "healthy" %}
+                <span class="badge badge-ok">{% translate "healthy" %}</span>
+                {% else %}
+                <span class="badge badge-bad">{% translate "unhealthy" %}</span>
+                {% endif %}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="snark-panel">
+        <h3>{% translate "Providers" %}</h3>
+        <table class="snark-table">
+          <thead>
+            <tr>
+              <th>{% translate "Provider" %}</th>
+              <th>{% translate "Role" %}</th>
+              <th class="num">{% translate "Status" %}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for prov in providers %}
+            <tr>
+              <td>{{ prov.name }}</td>
+              <td>
+                {% if prov.is_default %}
+                <span class="badge badge-default">{% translate "default" %}</span>
+                {% else %}
+                <span class="badge badge-muted">{% translate "fallback" %}</span>
+                {% endif %}
+              </td>
+              <td class="num">
+                {% if prov.configured %}
+                <span class="badge badge-ok">{% translate "configured" %}</span>
+                {% else %}
+                <span class="badge badge-bad">{% translate "no key" %}</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  {# 10. Default admin app list #}
+  <h2 class="snark-dash" style="text-transform:uppercase;font-size:13px;color:var(--body-quiet-color);">{% translate "Administration" %}</h2>
+  {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  function readJSON(id) {
+    var el = document.getElementById(id);
+    if (!el) { return null; }
+    try { return JSON.parse(el.textContent); }
+    catch (e) { return null; }
+  }
+
+  // Charts need Chart.js; bail silently if the CDN failed to load.
+  if (!window.Chart) { return; }
+
+  var palette = [
+    "#6366f1", "#22c55e", "#f59e0b", "#ef4444",
+    "#06b6d4", "#a855f7", "#ec4899", "#84cc16"
+  ];
+
+  // --- Responses & tokens over time -------------------------------------
+  var over = readJSON("chart-over-time-data");
+  var overCanvas = document.getElementById("chart-over-time");
+  if (over && overCanvas) {
+    new Chart(overCanvas, {
+      data: {
+        labels: over.labels || [],
+        datasets: [
+          {
+            type: "bar",
+            label: "Responses",
+            data: over.responses || [],
+            backgroundColor: "rgba(99, 102, 241, 0.55)",
+            borderColor: "#6366f1",
+            borderWidth: 1,
+            yAxisID: "y",
+            order: 2
+          },
+          {
+            type: "line",
+            label: "Tokens",
+            data: over.tokens || [],
+            borderColor: "#22c55e",
+            backgroundColor: "rgba(34, 197, 94, 0.15)",
+            tension: 0.3,
+            fill: false,
+            pointRadius: 2,
+            yAxisID: "y1",
+            order: 1
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        scales: {
+          y: { beginAtZero: true, position: "left", title: { display: true, text: "Responses" } },
+          y1: {
+            beginAtZero: true, position: "right",
+            grid: { drawOnChartArea: false },
+            title: { display: true, text: "Tokens" }
+          }
+        },
+        plugins: { legend: { position: "bottom" } }
+      }
+    });
+  }
+
+  // --- Provider share doughnut ------------------------------------------
+  var prov = readJSON("chart-providers-data");
+  var provCanvas = document.getElementById("chart-providers");
+  if (prov && provCanvas && (prov.counts || []).length) {
+    new Chart(provCanvas, {
+      type: "doughnut",
+      data: {
+        labels: prov.labels || [],
+        datasets: [{
+          data: prov.counts || [],
+          backgroundColor: palette,
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: "58%",
+        plugins: { legend: { position: "bottom" } }
+      }
+    });
+  }
+
+  // --- Top personas by requests (horizontal bar) ------------------------
+  var pers = readJSON("chart-personas-data");
+  var persCanvas = document.getElementById("chart-personas");
+  if (pers && persCanvas && (pers.counts || []).length) {
+    new Chart(persCanvas, {
+      type: "bar",
+      data: {
+        labels: pers.labels || [],
+        datasets: [{
+          label: "Requests",
+          data: pers.counts || [],
+          backgroundColor: "rgba(99, 102, 241, 0.65)",
+          borderColor: "#6366f1",
+          borderWidth: 1
+        }]
+      },
+      options: {
+        indexAxis: "y",
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { x: { beginAtZero: true, title: { display: true, text: "Requests" } } },
+        plugins: { legend: { display: false } }
+      }
+    });
+  }
+})();
+</script>
+{% endblock %}

@@ -22,4 +22,4 @@ RUN mkdir -p /app/staticfiles && cd /app/snark && \
 
 EXPOSE 8094
 
-CMD ["sh", "-c", "cd snark && python manage.py migrate && gunicorn base.wsgi:application --bind 0.0.0.0:8094 --workers 2 --threads 2 --max-requests 1000 --max-requests-jitter 100 --timeout 120"]
+CMD ["sh", "-c", "cd snark && python manage.py migrate && python manage.py ensure_admin && gunicorn base.wsgi:application --bind 0.0.0.0:8094 --workers 2 --threads 2 --max-requests 1000 --max-requests-jitter 100 --timeout 120"]

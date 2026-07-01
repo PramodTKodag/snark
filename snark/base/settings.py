@@ -87,7 +87,7 @@ REST_FRAMEWORK = {
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -243,3 +243,28 @@ CORS_ALLOWED_ORIGINS = config(
     cast=lambda v: [o.strip() for o in v.split(",") if o.strip()],
 )
 CORS_ALLOW_CREDENTIALS = False
+
+# --- Admin panel (opt-in; OFF by default so public deployments never expose a
+# login by accident). When enabling on an internet-facing host, set ADMIN_URL to
+# a non-guessable path and keep the admin behind a reverse proxy / IP allowlist.
+ADMIN_ENABLED = config("ADMIN_ENABLED", default=False, cast=bool)
+ADMIN_URL = config(
+    "ADMIN_URL", default="admin/"
+)  # no leading slash; keep trailing slash
+ADMIN_USERNAME = config("ADMIN_USERNAME", default="")
+ADMIN_EMAIL = config("ADMIN_EMAIL", default="")
+ADMIN_PASSWORD = config("ADMIN_PASSWORD", default="")
+
+# Per-provider estimated cost in USD per 1,000,000 tokens, for the admin
+# dashboard's cost estimate. Override via env as a comma-separated
+# "provider:price" list. A provider at 0 (or absent) contributes $0. Estimate
+# only: token counts are blended (input+output) and streamed responses log 0.
+PROVIDER_TOKEN_COST = config(
+    "PROVIDER_TOKEN_COST",
+    default="groq:0,gemini:0,claude:1.0",
+    cast=lambda v: {
+        part.split(":")[0].strip(): float(part.split(":")[1])
+        for part in v.split(",")
+        if ":" in part
+    },
+)

@@ -1,5 +1,6 @@
 .PHONY: help up down build logs test test-cov format lint migrate makemigrations seed shell \
-	mcp-install mcp mcp-http mcp-inspect mcp-test
+	mcp-install mcp mcp-http mcp-inspect mcp-test \
+	ensure-admin admin prune-logs
 
 # snark-mcp config. SNARK_API_URL defaults to the port snark runs on (WIT_PORT
 # from .env, else 8100). Override on the command line, e.g.
@@ -8,6 +9,7 @@ WIT_PORT := $(shell grep -E '^WIT_PORT=' .env 2>/dev/null | cut -d= -f2)
 WIT_PORT := $(if $(WIT_PORT),$(WIT_PORT),8100)
 SNARK_API_URL ?= http://localhost:$(WIT_PORT)
 MCP_PORT ?= 8000
+DAYS ?= 90
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -44,6 +46,15 @@ makemigrations: ## Generate Django migrations
 
 seed: ## Seed personas
 	cd snark && python manage.py seed_personas
+
+ensure-admin: ## Create/update admin superuser from ADMIN_* env vars
+	cd snark && python manage.py ensure_admin
+
+admin: ## Create an admin superuser interactively
+	cd snark && python manage.py createsuperuser
+
+prune-logs: ## Delete response logs older than DAYS (default 90)
+	cd snark && python manage.py prune_logs --days $(DAYS)
 
 shell: ## Django shell
 	cd snark && python manage.py shell
