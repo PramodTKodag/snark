@@ -27,6 +27,11 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Cover the declared floor (3.12) and the runtime the Docker image ships (3.14).
+        python-version: ["3.12", "3.14"]
     services:
       postgres:
         image: postgres:16
@@ -65,7 +70,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
           pip install poetry
