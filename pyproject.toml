@@ -39,7 +39,7 @@ snark = "snark.cli:main"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.0.0"
-isort = "^5.13.0"
+isort = "^8.0.1"
 flake8 = "^7.0.0"
 pytest = "^9.1.1"
 pytest-django = "^4.8.0"
