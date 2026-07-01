@@ -255,16 +255,10 @@ ADMIN_USERNAME = config("ADMIN_USERNAME", default="")
 ADMIN_EMAIL = config("ADMIN_EMAIL", default="")
 ADMIN_PASSWORD = config("ADMIN_PASSWORD", default="")
 
-# Per-provider estimated cost in USD per 1,000,000 tokens, for the admin
-# dashboard's cost estimate. Override via env as a comma-separated
-# "provider:price" list. A provider at 0 (or absent) contributes $0. Estimate
-# only: token counts are blended (input+output) and streamed responses log 0.
-PROVIDER_TOKEN_COST = config(
-    "PROVIDER_TOKEN_COST",
-    default="groq:0,gemini:0,claude:1.0",
-    cast=lambda v: {
-        part.split(":")[0].strip(): float(part.split(":")[1])
-        for part in v.split(",")
-        if ":" in part
-    },
-)
+# Optional per-provider price override for the admin dashboard cost estimate.
+# Default pricing comes from the vendored LiteLLM map (wit/pricing_data.json);
+# this only overrides it. Comma-separated, per provider, in USD per 1M tokens:
+#   "provider:input:output"  (e.g. claude:1:5)  or legacy "provider:blended".
+# Parsed in wit/pricing.py. Leave empty to rely entirely on the vendored map.
+# Estimate only: streamed responses log 0 tokens until #62.
+PROVIDER_TOKEN_COST = config("PROVIDER_TOKEN_COST", default="")
