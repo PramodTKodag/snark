@@ -62,3 +62,12 @@ def test_clear_persona_cache_action(persona_no):
     admin = PersonaAdmin(Persona, snark_admin_site)
     admin.clear_persona_cache(_request(), Persona.objects.filter(pk=persona_no.pk))
     assert cache.get(persona_cache_key("say-no")) is None
+
+
+@pytest.mark.django_db
+def test_responselog_admin_is_view_only():
+    from wit.admin import ResponseLogAdmin
+    from wit.models import ResponseLog
+
+    admin = ResponseLogAdmin(ResponseLog, snark_admin_site)
+    assert admin.has_add_permission(_request()) is False

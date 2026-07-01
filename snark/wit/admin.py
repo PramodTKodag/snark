@@ -2,10 +2,8 @@ from base.admin import snark_admin_site
 from django.contrib import admin
 from django.core.cache import cache
 
-from .models import (  # noqa: F401  (ResponseLog admin added in Task 4)
-    Persona,
-    ResponseLog,
-)
+from .maintenance import prune_response_logs
+from .models import Persona, ResponseLog
 from .services import persona_cache_key
 
 
@@ -66,3 +64,43 @@ class PersonaAdmin(admin.ModelAdmin):
         slugs = list(queryset.values_list("slug", flat=True))
         self._invalidate(slugs)
         self.message_user(request, f"Cleared cache for {len(slugs)} persona(s).")
+
+
+@admin.register(ResponseLog, site=snark_admin_site)
+class ResponseLogAdmin(admin.ModelAdmin):
+    list_display = (
+        "persona",
+        "provider_name",
+        "model_name",
+        "tokens_used",
+        "latency_ms",
+        "created_at",
+    )
+    list_filter = ("provider_name", "persona", "created_at")
+    search_fields = ("input_text", "response_text")
+    date_hierarchy = "created_at"
+    readonly_fields = (
+        "id",
+        "persona",
+        "input_text",
+        "response_text",
+        "tokens_used",
+        "latency_ms",
+        "provider_name",
+        "model_name",
+        "created_at",
+    )
+    actions = ("prune_30", "prune_90")
+
+    def has_add_permission(self, request):
+        return False
+
+    @admin.action(description="Delete ALL logs older than 30 days")
+    def prune_30(self, request, queryset):
+        count = prune_response_logs(30)
+        self.message_user(request, f"Pruned {count} log(s) older than 30 days.")
+
+    @admin.action(description="Delete ALL logs older than 90 days")
+    def prune_90(self, request, queryset):
+        count = prune_response_logs(90)
+        self.message_user(request, f"Pruned {count} log(s) older than 90 days.")
