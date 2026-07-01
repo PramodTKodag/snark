@@ -326,8 +326,51 @@ All configuration is via environment variables. See `.env.example` for the full 
 | `REDIS_DB` | `9` | Redis database number |
 | `USE_PROXY_SSL_HEADER` | `False` | Trust `X-Forwarded-Proto` when behind a TLS-terminating proxy |
 | `NUM_PROXIES` | — | Trusted proxy count, so per-IP rate limiting reads the real client IP from `X-Forwarded-For` |
+| `ADMIN_ENABLED` | `False` | Enable the opt-in Django admin UI |
+| `ADMIN_URL` | `admin/` | Path the admin mounts at when enabled (change it) |
+| `ADMIN_USERNAME` / `ADMIN_EMAIL` / `ADMIN_PASSWORD` | — | Optional superuser auto-bootstrap on startup |
+| `PROVIDER_TOKEN_COST` | `groq:0,gemini:0,claude:1.0` | Per-provider $/1M tokens for the admin dashboard cost estimate |
 
 > **Behind a reverse proxy?** Set `USE_PROXY_SSL_HEADER=True` and `NUM_PROXIES=<n>` so HTTPS detection and per-IP rate limiting work correctly. Leave both unset for direct connections.
+
+## Admin panel (optional)
+
+Snark ships an opt-in Django admin for managing personas and browsing usage —
+**off by default** so public deployments never expose a login.
+
+Enable it per deployment in `.env`:
+
+```bash
+ADMIN_ENABLED=True
+ADMIN_URL=manage-a1b2c3/          # change to a non-guessable path; keep the trailing slash
+ADMIN_USERNAME=admin              # optional: auto-bootstrap a superuser on startup
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=a-strong-password  # min 12 chars
+PROVIDER_TOKEN_COST=groq:0,gemini:0,claude:1.0  # per-provider USD per 1M tokens for the dashboard cost estimate (0 hides it; estimate only)
+```
+
+On startup the stack runs `ensure_admin`, which creates/updates the superuser
+from those vars (a no-op when unset). Or create one manually:
+
+```bash
+make admin          # interactive createsuperuser
+make ensure-admin   # from ADMIN_* env vars
+```
+
+The admin mounts at `ADMIN_URL` and includes an **interactive analytics
+dashboard** (Chart.js) with KPI cards (total responses, tokens, average
+latency, last-24h activity, active personas), responses/tokens-over-time and
+provider-share charts, provider/latency (p95)/model analytics,
+unused-persona detection, a recent-activity feed, DB/Redis health status, and
+a configurable cost estimate. It also provides persona CRUD with bulk
+activate/deactivate/duplicate/clear-cache actions, and read-only
+response-log browsing with retention pruning. Prune logs from the CLI too:
+
+```bash
+make prune-logs DAYS=90
+```
+
+Keep the admin behind a reverse proxy / IP allowlist on any internet-facing host.
 
 ## Contributing
 

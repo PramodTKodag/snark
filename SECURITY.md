@@ -80,3 +80,6 @@ If you are deploying Snark:
 - Run behind a reverse proxy (nginx, Caddy) with TLS
 - Keep dependencies updated with `poetry update`
 - Monitor logs for unusual request patterns
+- Keep the admin panel disabled (`ADMIN_ENABLED=False`) unless you need it; when
+  enabled, set `ADMIN_URL` to a non-guessable path, use a strong `ADMIN_PASSWORD`
+  (12+ chars), and restrict it to a reverse proxy / IP allowlist
