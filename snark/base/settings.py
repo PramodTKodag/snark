@@ -254,3 +254,17 @@ ADMIN_URL = config(
 ADMIN_USERNAME = config("ADMIN_USERNAME", default="")
 ADMIN_EMAIL = config("ADMIN_EMAIL", default="")
 ADMIN_PASSWORD = config("ADMIN_PASSWORD", default="")
+
+# Per-provider estimated cost in USD per 1,000,000 tokens, for the admin
+# dashboard's cost estimate. Override via env as a comma-separated
+# "provider:price" list. A provider at 0 (or absent) contributes $0. Estimate
+# only: token counts are blended (input+output) and streamed responses log 0.
+PROVIDER_TOKEN_COST = config(
+    "PROVIDER_TOKEN_COST",
+    default="groq:0,gemini:0,claude:1.0",
+    cast=lambda v: {
+        part.split(":")[0].strip(): float(part.split(":")[1])
+        for part in v.split(",")
+        if ":" in part
+    },
+)

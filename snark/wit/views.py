@@ -55,7 +55,7 @@ from .github import (
     build_roast_context,
     fetch_profile,
 )
-from .models import Persona, ResponseLog
+from .models import Persona
 from .providers.base import ProviderError
 from .serializers import (
     BatchRequestSerializer,
@@ -69,6 +69,7 @@ from .serializers import (
     WitResponseSerializer,
 )
 from .services import PersonaNotFoundError, WitService
+from .stats import usage_stats
 
 logger = logging.getLogger(__name__)
 
@@ -860,31 +861,11 @@ class StatsView(APIView):
 
     def get(self, request):
         from django.core.cache import cache
-        from django.db.models import Count, Sum
 
         cache_key = "wit:stats"
         stats = cache.get(cache_key)
         if stats is None:
-            agg = ResponseLog.objects.aggregate(
-                total=Count("id"), tokens=Sum("tokens_used")
-            )
-            top = (
-                ResponseLog.objects.values("persona__slug", "persona__name")
-                .annotate(count=Count("id"))
-                .order_by("-count")[:10]
-            )
-            stats = {
-                "total_responses": agg["total"] or 0,
-                "total_tokens": agg["tokens"] or 0,
-                "personas": [
-                    {
-                        "slug": row["persona__slug"],
-                        "name": row["persona__name"],
-                        "count": row["count"],
-                    }
-                    for row in top
-                ],
-            }
+            stats = usage_stats()
             cache.set(cache_key, stats, 60)
         return Response(stats)
 
