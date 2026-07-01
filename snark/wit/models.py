@@ -46,3 +46,28 @@ class ResponseLog(models.Model):
 
     def __str__(self):
         return f"{self.persona.slug} @ {self.created_at}"
+
+
+class GenerationEvent(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    persona = models.ForeignKey(
+        Persona,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="events",
+    )
+    provider_name = models.CharField(max_length=50)
+    model_name = models.CharField(max_length=100, blank=True, default="")
+    success = models.BooleanField(default=True)
+    fell_back = models.BooleanField(default=False)  # a non-primary provider served
+    content_filtered = models.BooleanField(default=False)  # a content filter was hit
+    streamed = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = "generation_events"
+        indexes = [models.Index(fields=["-created_at"])]
+
+    def __str__(self):
+        return f"{self.provider_name} {'ok' if self.success else 'fail'} @ {self.created_at}"
