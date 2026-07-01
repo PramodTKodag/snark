@@ -70,6 +70,11 @@ NUM_PROXIES = config(
     "NUM_PROXIES", default=None, cast=lambda v: int(v) if v not in (None, "") else None
 )
 
+# Max concurrent SSE streams per worker process. Streaming pins a worker thread
+# for the whole LLM call, so bound it (keep it below GUNICORN_THREADS) to leave
+# threads free for normal JSON requests. 0 disables the cap.
+MAX_CONCURRENT_STREAMS = config("MAX_CONCURRENT_STREAMS", default=6, cast=int)
+
 REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 10,
