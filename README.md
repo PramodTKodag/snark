@@ -328,12 +328,27 @@ All configuration is via environment variables. See `.env.example` for the full 
 | `REDIS_DB` | `9` | Redis database number |
 | `USE_PROXY_SSL_HEADER` | `False` | Trust `X-Forwarded-Proto` when behind a TLS-terminating proxy |
 | `NUM_PROXIES` | — | Trusted proxy count, so per-IP rate limiting reads the real client IP from `X-Forwarded-For` |
+| `GUNICORN_WORKERS` | `2` | Gunicorn worker processes (prod only) |
+| `GUNICORN_THREADS` | `8` | Threads per worker; threads serve concurrent streams (prod only) |
+| `MAX_CONCURRENT_STREAMS` | `6` | Max concurrent SSE streams per worker; excess get a `503` (`stream_capacity`). `0` disables the cap |
 | `ADMIN_ENABLED` | `False` | Enable the opt-in Django admin UI |
 | `ADMIN_URL` | `admin/` | Path the admin mounts at when enabled (change it) |
 | `ADMIN_USERNAME` / `ADMIN_EMAIL` / `ADMIN_PASSWORD` | — | Optional superuser auto-bootstrap on startup |
 | `PROVIDER_TOKEN_COST` | — (empty) | Optional price override for the dashboard cost estimate: `provider:input:output` per $1M (e.g. `claude:1:5`), or legacy `provider:blended`. Empty uses the vendored LiteLLM map (`make update-pricing`) |
 
 > **Behind a reverse proxy?** Set `USE_PROXY_SSL_HEADER=True` and `NUM_PROXIES=<n>` so HTTPS detection and per-IP rate limiting work correctly. Leave both unset for direct connections.
+
+### Streaming & concurrency
+
+Gunicorn threads serve concurrent requests; a `?stream=true` request pins a
+thread for the whole LLM call (streaming bypasses the cache). Tune capacity per
+deployment with `GUNICORN_WORKERS` and `GUNICORN_THREADS`. `MAX_CONCURRENT_STREAMS`
+caps streams **per worker** so a burst of streams can't consume every thread and
+starve normal JSON traffic — excess streams get a fast `503` with a
+`stream_capacity` error and a `Retry-After` header (set it to `0` to disable the
+cap). Keep it below `GUNICORN_THREADS` to leave threads free for JSON requests.
+For heavy sustained streaming load, an async worker (gevent) or an ASGI server is
+the future scale-up.
 
 ## Admin panel (optional)
 

@@ -1,7 +1,9 @@
 import json
 import logging
 import re
+import threading
 
+from django.conf import settings
 from django.http import StreamingHttpResponse
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema
@@ -72,6 +74,14 @@ from .services import PersonaNotFoundError, WitService
 from .stats import usage_stats
 
 logger = logging.getLogger(__name__)
+
+# Per-worker cap so streams can't consume every gthread worker thread and
+# starve normal JSON requests. None = disabled.
+_stream_semaphore = (
+    threading.BoundedSemaphore(settings.MAX_CONCURRENT_STREAMS)
+    if settings.MAX_CONCURRENT_STREAMS > 0
+    else None
+)
 
 
 def _get_version():
@@ -161,13 +171,44 @@ class BaseWitView(APIView):
             )
 
     def _stream_response(self, slug, user_input, mood, length, lang):
+        if _stream_semaphore is not None and not _stream_semaphore.acquire(
+            blocking=False
+        ):
+            return self._stream_busy_response()
         response = StreamingHttpResponse(
-            self._sse_events(slug, user_input, mood, length, lang),
+            self._sse_events_guarded(slug, user_input, mood, length, lang),
             content_type="text/event-stream",
         )
         response["Cache-Control"] = "no-cache"
         # Tell reverse proxies (nginx) not to buffer the stream.
         response["X-Accel-Buffering"] = "no"
+        return response
+
+    @staticmethod
+    def _sse_events_guarded(slug, user_input, mood, length, lang):
+        try:
+            yield from BaseWitView._sse_events(slug, user_input, mood, length, lang)
+        finally:
+            # Runs on normal completion AND on client disconnect (GeneratorExit),
+            # so a dropped stream frees its slot.
+            if _stream_semaphore is not None:
+                _stream_semaphore.release()
+
+    @staticmethod
+    def _stream_busy_response():
+        def _busy():
+            err = {
+                "error": "Server busy — too many concurrent streams, retry shortly",
+                "code": "stream_capacity",
+            }
+            yield f"data: {json.dumps(err)}\n\n"
+            yield "data: [DONE]\n\n"
+
+        response = StreamingHttpResponse(
+            _busy(), content_type="text/event-stream", status=503
+        )
+        response["Cache-Control"] = "no-cache"
+        response["Retry-After"] = "5"
         return response
 
     @staticmethod
