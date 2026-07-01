@@ -13,6 +13,7 @@ class TestWitService:
     def test_generate_creates_response_log(self, mock_cache, mock_registry, persona_no):
         mock_cache.get.return_value = None
         mock_provider = MagicMock()
+        mock_provider.name = "claude"
         mock_provider.generate.return_value = AIResponse(
             text="No thanks",
             tokens_used=15,

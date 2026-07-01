@@ -131,6 +131,78 @@
       {% endif %}
     </div>
 
+    {# 1b. Reliability #}
+    <h2>{% translate "Reliability" %}</h2>
+    {% if reliability.total %}
+    <div class="snark-kpis">
+      <div class="snark-card accent">
+        <div class="label">{% translate "Error rate" %}</div>
+        <div class="value">{{ reliability.error_rate }}<small> %</small></div>
+        <div class="sub">{{ reliability.errors }} / {{ reliability.total }} {% translate "events" %}</div>
+      </div>
+      <div class="snark-card">
+        <div class="label">{% translate "Fallback rate" %}</div>
+        <div class="value">{{ reliability.fallback_rate }}<small> %</small></div>
+        <div class="sub">{{ reliability.fallbacks }} / {{ reliability.total }} {% translate "events" %}</div>
+      </div>
+      <div class="snark-card">
+        <div class="label">{% translate "Content-filter rate" %}</div>
+        <div class="value">{{ reliability.content_filter_rate }}<small> %</small></div>
+        <div class="sub">{{ reliability.filtered }} / {{ reliability.total }} {% translate "events" %}</div>
+      </div>
+    </div>
+    {% if provider_errors %}
+    <div class="snark-panel" style="margin-top:20px;">
+      <h3>{% translate "Errors by provider" %}</h3>
+      <table class="snark-table">
+        <thead>
+          <tr>
+            <th>{% translate "Provider" %}</th>
+            <th class="num">{% translate "Errors" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in provider_errors %}
+          <tr>
+            <td>{{ row.provider }}</td>
+            <td class="num">{{ row.errors }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+    {% if recent_failures %}
+    <div class="snark-panel" style="margin-top:20px;">
+      <h3>{% translate "Recent failures" %}</h3>
+      <table class="snark-table">
+        <thead>
+          <tr>
+            <th>{% translate "When" %}</th>
+            <th>{% translate "Provider" %}</th>
+            <th>{% translate "Reason" %}</th>
+            <th>{% translate "Detail" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in recent_failures %}
+          <tr>
+            <td>{{ row.created_at|date:"m/d H:i" }}</td>
+            <td>{{ row.provider_name }}{% if row.streamed %} <span class="snark-muted">(stream)</span>{% endif %}</td>
+            <td>{{ row.error_code|default:"error" }}</td>
+            <td class="snark-muted" style="font-size:11px;">{{ row.error_detail|truncatechars:80 }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="snark-panel">
+      <p class="snark-empty">{% translate "No generation events recorded yet." %}</p>
+    </div>
+    {% endif %}
+
     {# 2. Charts #}
     <h2>{% translate "Trends" %}</h2>
     <div class="snark-grid">
