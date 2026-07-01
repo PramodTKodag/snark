@@ -106,6 +106,9 @@ class WitService:
         last_error: Exception | None = None
         for provider in providers:
             collected: list[str] = []
+            # Set from the provider's terminal StreamUsage marker. If the stream
+            # errors before that marker (content filter / provider failure), it
+            # stays None and _log_stream records 0 tokens for the partial run.
             usage: StreamUsage | None = None
             try:
                 for chunk in provider.generate_stream(

@@ -121,7 +121,10 @@ class GroqProvider(AIProvider):
                     {"role": "user", "content": user_prompt},
                 ],
                 stream=True,
-                stream_options={"include_usage": True},
+                # The groq SDK (0.13.x) has no `stream_options` kwarg — passing
+                # it raises TypeError and breaks every stream. Forward it via
+                # `extra_body` so the API still emits a final usage chunk.
+                extra_body={"stream_options": {"include_usage": True}},
             )
             input_tokens = 0
             output_tokens = 0
