@@ -4,7 +4,7 @@ import time
 
 from django.conf import settings
 
-from .base import AIProvider, AIResponse, ContentFilterError, ProviderError
+from .base import AIProvider, AIResponse, ContentFilterError, ProviderError, StreamUsage
 
 logger = logging.getLogger(__name__)
 
@@ -121,8 +121,16 @@ class GroqProvider(AIProvider):
                     {"role": "user", "content": user_prompt},
                 ],
                 stream=True,
+                stream_options={"include_usage": True},
             )
+            input_tokens = 0
+            output_tokens = 0
             for chunk in stream:
+                # include_usage emits a final choice-less chunk carrying usage.
+                usage = getattr(chunk, "usage", None)
+                if usage:
+                    input_tokens = usage.prompt_tokens or 0
+                    output_tokens = usage.completion_tokens or 0
                 if not chunk.choices:
                     continue
                 choice = chunk.choices[0]
@@ -131,6 +139,7 @@ class GroqProvider(AIProvider):
                 delta = choice.delta.content or ""
                 if delta:
                     yield delta
+            yield StreamUsage(input_tokens=input_tokens, output_tokens=output_tokens)
         except ContentFilterError:
             raise
         except Exception as exc:

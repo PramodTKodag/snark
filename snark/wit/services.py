@@ -8,7 +8,7 @@ from django.core.cache import cache
 from .constants import ALLOWED_LENGTHS, ALLOWED_MOODS, LENGTH_MAX_TOKENS
 from .models import Persona, ResponseLog
 from .providers import ProviderRegistry
-from .providers.base import ContentFilterError, ProviderError
+from .providers.base import ContentFilterError, ProviderError, StreamUsage
 
 logger = logging.getLogger(__name__)
 
@@ -106,15 +106,19 @@ class WitService:
         last_error: Exception | None = None
         for provider in providers:
             collected: list[str] = []
+            usage: StreamUsage | None = None
             try:
-                for delta in provider.generate_stream(
+                for chunk in provider.generate_stream(
                     system_prompt=system_prompt,
                     user_prompt=user_prompt,
                     temperature=persona.temperature,
                     max_tokens=max_tokens,
                 ):
-                    collected.append(delta)
-                    yield {"delta": delta}
+                    if isinstance(chunk, StreamUsage):
+                        usage = chunk  # terminal marker, not response text
+                        continue
+                    collected.append(chunk)
+                    yield {"delta": chunk}
             except (ContentFilterError, ProviderError) as exc:
                 last_error = exc
                 if collected:
@@ -130,14 +134,16 @@ class WitService:
 
             text = "".join(collected)
             latency_ms = int((time.monotonic() - start) * 1000)
-            WitService._log_stream(persona, user_input, text, provider, latency_ms)
+            WitService._log_stream(
+                persona, user_input, text, provider, latency_ms, usage
+            )
             yield {"persona": persona.name, "done": True}
             return
 
         raise last_error or ProviderError("All AI providers failed to stream")
 
     @staticmethod
-    def _log_stream(persona, user_input, text, provider, latency_ms):
+    def _log_stream(persona, user_input, text, provider, latency_ms, usage=None):
         if not text:
             return
         model_name = (
@@ -145,12 +151,16 @@ class WitService:
             or getattr(provider, "_model_name", None)
             or provider.name
         )
+        input_tokens = usage.input_tokens if usage else 0
+        output_tokens = usage.output_tokens if usage else 0
         try:
             ResponseLog.objects.create(
                 persona=persona,
                 input_text=user_input,
                 response_text=text,
-                tokens_used=0,  # token counts aren't tracked for streamed responses
+                tokens_used=input_tokens + output_tokens,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
                 latency_ms=latency_ms,
                 provider_name=provider.name,
                 model_name=model_name,

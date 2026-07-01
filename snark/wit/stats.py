@@ -237,7 +237,8 @@ def cost_estimate() -> dict:
 
     Rates are resolved per (provider, model) group from the vendored pricing map
     (with the PROVIDER_TOKEN_COST env override), then rolled up to per-provider
-    totals for display. Streamed responses log 0 tokens so they contribute $0.
+    totals for display. Streamed and non-streamed responses both log split
+    token usage, so both contribute to the estimate.
     """
     rows = ResponseLog.objects.values("provider_name", "model_name").annotate(
         input_tokens=Sum("input_tokens"),
