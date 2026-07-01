@@ -10,6 +10,8 @@ class AIResponse:
     model: str
     provider: str
     latency_ms: int = field(default=0)
+    input_tokens: int = field(default=0)
+    output_tokens: int = field(default=0)
 
 
 class ProviderError(Exception):

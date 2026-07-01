@@ -86,14 +86,17 @@ class ClaudeProvider(AIProvider):
 
         latency_ms = int((time.monotonic() - start) * 1000)
         text = response.content[0].text if response.content else ""
-        tokens = response.usage.input_tokens + response.usage.output_tokens
+        input_tokens = response.usage.input_tokens
+        output_tokens = response.usage.output_tokens
 
         return AIResponse(
             text=text,
-            tokens_used=tokens,
+            tokens_used=input_tokens + output_tokens,
             model=self._model,
             provider=self.name,
             latency_ms=latency_ms,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
         )
 
     def generate_stream(

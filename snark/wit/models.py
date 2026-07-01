@@ -31,6 +31,8 @@ class ResponseLog(models.Model):
     input_text = models.TextField(blank=True, default="")
     response_text = models.TextField()
     tokens_used = models.IntegerField(default=0)
+    input_tokens = models.IntegerField(default=0)
+    output_tokens = models.IntegerField(default=0)
     latency_ms = models.IntegerField(default=0)
     provider_name = models.CharField(max_length=50)
     model_name = models.CharField(max_length=100)
