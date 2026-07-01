@@ -267,16 +267,18 @@ Restart the session and the tools are available. See [`mcp-server/README.md`](mc
 snark/
 ├── base/              # Django config
 └── wit/
-    ├── models.py      # Persona, ResponseLog
+    ├── models.py      # Persona, ResponseLog, GenerationEvent
     ├── views.py       # API endpoints
     ├── services.py    # Orchestrator (caching, anti-repetition, fallback)
+    ├── stats.py       # usage / cost / reliability aggregation
+    ├── pricing.py     # per-model token pricing
     ├── providers/     # AI provider abstraction
     │   ├── base.py        # AIProvider interface
     │   ├── registry.py    # Provider registry with fallback
     │   ├── groq_provider.py
     │   ├── gemini_provider.py
     │   └── claude_provider.py
-    └── management/    # seed_personas command
+    └── management/    # seed / admin bootstrap / pricing / retention commands
 ```
 
 ### Provider Fallback
@@ -369,9 +371,10 @@ make ensure-admin   # from ADMIN_* env vars
 ```
 
 The admin mounts at `ADMIN_URL` and includes an **interactive analytics
-dashboard** (Chart.js) with KPI cards (total responses, tokens, average
-latency, last-24h activity, active personas), responses/tokens-over-time and
-provider-share charts, provider/latency (p95)/model analytics,
+dashboard** (Chart.js) with usage, cost, latency, and reliability analytics —
+KPI cards, time-series and provider-share charts, latency percentiles,
+per-persona cost, provider/model breakdowns, reliability metrics (error rate,
+provider-fallback frequency, content-filter rate) with recent-failure detail,
 unused-persona detection, a recent-activity feed, DB/Redis health status, and
 a configurable cost estimate. It also provides persona CRUD with bulk
 activate/deactivate/duplicate/clear-cache actions, and read-only
