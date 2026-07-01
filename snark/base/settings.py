@@ -260,5 +260,5 @@ ADMIN_PASSWORD = config("ADMIN_PASSWORD", default="")
 # this only overrides it. Comma-separated, per provider, in USD per 1M tokens:
 #   "provider:input:output"  (e.g. claude:1:5)  or legacy "provider:blended".
 # Parsed in wit/pricing.py. Leave empty to rely entirely on the vendored map.
-# Estimate only: streamed responses log 0 tokens until #62.
+# Estimate only: list prices, cached/batch discounts not modeled.
 PROVIDER_TOKEN_COST = config("PROVIDER_TOKEN_COST", default="")

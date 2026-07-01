@@ -4,7 +4,7 @@ import time
 
 from django.conf import settings
 
-from .base import AIProvider, AIResponse, ContentFilterError, ProviderError
+from .base import AIProvider, AIResponse, ContentFilterError, ProviderError, StreamUsage
 
 logger = logging.getLogger(__name__)
 
@@ -152,14 +152,21 @@ class GeminiProvider(AIProvider):
                     safety_settings=self._safety_settings(),
                 ),
             )
+            input_tokens = 0
+            output_tokens = 0
             for chunk in stream:
                 self._raise_if_blocked(chunk)
+                meta = getattr(chunk, "usage_metadata", None)
+                if meta:
+                    input_tokens = meta.prompt_token_count or 0
+                    output_tokens = meta.candidates_token_count or 0
                 try:
                     text = chunk.text or ""
                 except (ValueError, AttributeError):
                     text = ""
                 if text:
                     yield text
+            yield StreamUsage(input_tokens=input_tokens, output_tokens=output_tokens)
         except ContentFilterError:
             raise
         except Exception as exc:

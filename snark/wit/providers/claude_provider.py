@@ -4,7 +4,7 @@ import time
 
 from django.conf import settings
 
-from .base import AIProvider, AIResponse, ContentFilterError, ProviderError
+from .base import AIProvider, AIResponse, ContentFilterError, ProviderError, StreamUsage
 
 logger = logging.getLogger(__name__)
 
@@ -123,6 +123,11 @@ class ClaudeProvider(AIProvider):
                 for text in stream.text_stream:
                     if text:
                         yield text
+                usage = stream.get_final_message().usage
+                yield StreamUsage(
+                    input_tokens=usage.input_tokens,
+                    output_tokens=usage.output_tokens,
+                )
         except anthropic.BadRequestError as exc:
             if "content filtering" in str(exc).lower() or "blocked" in str(exc).lower():
                 logger.warning("Claude content filter triggered: %s", exc)
