@@ -104,6 +104,27 @@ class TestGetRates:
         assert pricing.get_rates("claude", "claude-haiku") == (9.9, 9.9)
 
 
+class TestRequestCost:
+    def test_uses_split_rates(self, settings):
+        settings.PROVIDER_TOKEN_COST = "claude:1:3"
+        # $1/1M input + $3/1M output over 1M tokens each -> 1 + 3 = 4.0
+        assert pricing.request_cost("claude", "m", 1_000_000, 1_000_000) == 4.0
+
+    def test_none_tokens_treated_as_zero(self, settings):
+        settings.PROVIDER_TOKEN_COST = "claude:1:3"
+        assert pricing.request_cost("claude", "m", None, None) == 0.0
+
+    def test_unknown_provider_is_zero(self, monkeypatch, settings):
+        settings.PROVIDER_TOKEN_COST = ""
+        monkeypatch.setattr(pricing, "_price_map", lambda: {})
+        assert pricing.request_cost("nope", "m", 100, 100) == 0.0
+
+    def test_rounds_to_six_places(self, settings):
+        settings.PROVIDER_TOKEN_COST = "claude:1:3"
+        # 8 input * $1/1M + 12 output * $3/1M = 0.000008 + 0.000036
+        assert pricing.request_cost("claude", "m", 8, 12) == pytest.approx(4.4e-5)
+
+
 class TestHasPricing:
     def test_true_when_map_non_empty(self, monkeypatch, settings):
         settings.PROVIDER_TOKEN_COST = ""

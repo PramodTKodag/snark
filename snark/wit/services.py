@@ -5,7 +5,7 @@ import time
 
 from django.core.cache import cache
 
-from . import privacy
+from . import pricing, privacy
 from .constants import ALLOWED_LENGTHS, ALLOWED_MOODS, LENGTH_MAX_TOKENS
 from .models import GenerationEvent, Persona, ResponseLog
 from .providers import ProviderRegistry
@@ -69,6 +69,29 @@ class WitService:
             latency_ms=ai_response.latency_ms,
             provider_name=ai_response.provider,
             model_name=ai_response.model,
+        )
+
+        # One structured, machine-parseable event per generation (Loki/Grafana).
+        # INFO and privacy-safe: carries usage/cost metadata, never raw input.
+        logger.info(
+            "generation",
+            extra={
+                "event": "generation",
+                "persona": persona.slug,
+                "provider": ai_response.provider,
+                "model": ai_response.model,
+                "input_tokens": ai_response.input_tokens,
+                "output_tokens": ai_response.output_tokens,
+                "tokens": ai_response.tokens_used,
+                "latency_ms": ai_response.latency_ms,
+                "cost_usd": pricing.request_cost(
+                    ai_response.provider,
+                    ai_response.model,
+                    ai_response.input_tokens,
+                    ai_response.output_tokens,
+                ),
+                "streamed": False,
+            },
         )
 
         cache.set(cache_key, ai_response.text, RESPONSE_CACHE_TTL)
@@ -197,6 +220,24 @@ class WitService:
                 latency_ms=latency_ms,
                 provider_name=provider.name,
                 model_name=model_name,
+            )
+            # Structured per-generation event (streamed path); see generate().
+            logger.info(
+                "generation",
+                extra={
+                    "event": "generation",
+                    "persona": persona.slug,
+                    "provider": provider.name,
+                    "model": model_name,
+                    "input_tokens": input_tokens,
+                    "output_tokens": output_tokens,
+                    "tokens": input_tokens + output_tokens,
+                    "latency_ms": latency_ms,
+                    "cost_usd": pricing.request_cost(
+                        provider.name, model_name, input_tokens, output_tokens
+                    ),
+                    "streamed": True,
+                },
             )
         except Exception:
             logger.exception("Failed to log streamed response")

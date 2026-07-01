@@ -380,6 +380,27 @@ make prune-logs DAYS=90          # apply a 90-day window to both tables
 Stats and anti-repetition never read the input field, so redaction does not
 affect them.
 
+### Logging & observability
+
+Logs are human-readable **plain text by default**. Set `LOG_FORMAT=json` (with an
+optional `LOG_LEVEL`, default `INFO`) to emit **one JSON line per record** for both
+Django and app logs — structured so aggregators can filter by field. Recommended in
+production.
+
+Every generation also logs a structured `generation` event with `provider`,
+`model`, split `input_tokens`/`output_tokens` (and `tokens`), `latency_ms`, and an
+estimated `cost_usd` — a machine-parseable, per-request usage line. It is `INFO`
+and privacy-safe: it never includes raw user input.
+
+```bash
+LOG_FORMAT=json     # plain (default) | json — one JSON line per record
+LOG_LEVEL=INFO      # DEBUG | INFO | WARNING | ERROR
+```
+
+Ship these JSON lines to [Loki](https://grafana.com/oss/loki/)/Grafana (or any log
+aggregator) for dashboards and alerting on token usage, cost, latency, and error
+rates — no extra dependency, just structured stdout.
+
 ## Admin panel (optional)
 
 Snark ships an opt-in Django admin for managing personas and browsing usage —
