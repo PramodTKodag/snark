@@ -30,7 +30,7 @@ whitenoise = "^6.7.0"
 gunicorn = "^26.0.0"
 anthropic = "^0.111.0"
 google-genai = "^2.9.0"
-groq = "^0.13.0"
+groq = "^1.5.0"
 python-decouple = "^3.8"
 django-cors-headers = "^4.4.0"
 

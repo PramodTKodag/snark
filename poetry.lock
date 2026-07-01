@@ -880,14 +880,14 @@ pyopenssl = ["pyopenssl"]
 
 [[package]]
 name = "groq"
-version = "0.13.1"
+version = "1.5.0"
 description = "The official Python library for the groq API"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "groq-0.13.1-py3-none-any.whl", hash = "sha256:0c5d1d6df93de55de705fe73729b79baaa0c871f7575d6aa64b2962b56101b3e"},
-    {file = "groq-0.13.1.tar.gz", hash = "sha256:588fd5bee984f4eb46ec89552778d5698b9e9614435defef868645c19463cbcc"},
+    {file = "groq-1.5.0-py3-none-any.whl", hash = "sha256:a927fd75b4a60cb066c408cb4f9647536caf74e241ea75bc57d1810501b8203f"},
+    {file = "groq-1.5.0.tar.gz", hash = "sha256:8648388f8668629490bb0eab11252b4cc43316149fda9c6343e9a9577fe7df88"},
 ]
 
 [package.dependencies]
@@ -896,7 +896,10 @@ distro = ">=1.7.0,<2"
 httpx = ">=0.23.0,<1"
 pydantic = ">=1.9.0,<3"
 sniffio = "*"
-typing-extensions = ">=4.10,<5"
+typing-extensions = ">=4.14,<5"
+
+[package.extras]
+aiohttp = ["aiohttp", "httpx-aiohttp (>=0.1.9)"]
 
 [[package]]
 name = "gunicorn"
@@ -2492,4 +2495,4 @@ brotli = ["brotli"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<4.0"
-content-hash = "a69818d92b8b2313b258fc09530cef47f8801be6ba74ab41afa45e7ee2bf922e"
+content-hash = "9a15ff0be9d0d281017eddd699b4c84d2300cb934d8616c3f4ad74bf927e72ff"
