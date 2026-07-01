@@ -1,3 +1,4 @@
+import logging
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -76,6 +77,76 @@ class TestWitService:
 
         log = ResponseLog.objects.get(persona=persona_no)
         assert log.input_text == "reach me at a@b.com"
+
+    @patch("wit.services.ProviderRegistry")
+    @patch("wit.services.cache")
+    def test_generate_emits_generation_log(
+        self, mock_cache, mock_registry, persona_no, settings, caplog
+    ):
+        settings.PROVIDER_TOKEN_COST = "claude:1:3"
+        mock_cache.get.return_value = None
+        mock_provider = MagicMock()
+        mock_provider.name = "claude"
+        mock_provider.generate.return_value = AIResponse(
+            text="No thanks",
+            tokens_used=20,
+            model="test-model",
+            provider="claude",
+            latency_ms=50,
+            input_tokens=8,
+            output_tokens=12,
+        )
+        mock_registry.get.return_value = mock_provider
+
+        with caplog.at_level(logging.INFO, logger="wit.services"):
+            WitService.generate("say-no")
+
+        records = [
+            r for r in caplog.records if getattr(r, "event", None) == "generation"
+        ]
+        assert len(records) == 1
+        record = records[0]
+        assert record.levelname == "INFO"
+        assert record.getMessage() == "generation"
+        assert record.persona == "say-no"
+        assert record.provider == "claude"
+        assert record.model == "test-model"
+        assert record.tokens == 20
+        assert record.input_tokens == 8
+        assert record.output_tokens == 12
+        assert record.latency_ms == 50
+        assert record.streamed is False
+        # 8 input * $1/1M + 12 output * $3/1M
+        assert hasattr(record, "cost_usd")
+        assert record.cost_usd == pytest.approx(4.4e-5)
+
+    @patch("wit.services.ProviderRegistry")
+    @patch("wit.services.cache")
+    def test_generation_log_excludes_raw_input(
+        self, mock_cache, mock_registry, persona_no, caplog
+    ):
+        mock_cache.get.return_value = None
+        mock_provider = MagicMock()
+        mock_provider.name = "claude"
+        mock_provider.generate.return_value = AIResponse(
+            text="No thanks",
+            tokens_used=15,
+            model="test-model",
+            provider="claude",
+            latency_ms=50,
+        )
+        mock_registry.get.return_value = mock_provider
+
+        with caplog.at_level(logging.INFO, logger="wit.services"):
+            WitService.generate("say-no", user_input="my secret is hunter2")
+
+        records = [
+            r for r in caplog.records if getattr(r, "event", None) == "generation"
+        ]
+        assert len(records) == 1
+        # Privacy: the structured INFO line must not carry raw user input.
+        assert not hasattr(records[0], "input_text")
+        assert not hasattr(records[0], "user_input")
 
     @patch("wit.services.cache")
     def test_generate_returns_cached(self, mock_cache, persona_no):

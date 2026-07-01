@@ -1,3 +1,4 @@
+import logging
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -203,6 +204,41 @@ class TestServiceStreaming:
         assert log.input_tokens == 9
         assert log.output_tokens == 5
         assert log.tokens_used == 14
+
+    @patch("wit.services.ProviderRegistry")
+    @patch("wit.services.cache")
+    def test_stream_emits_generation_log(
+        self, mock_cache, mock_registry, persona_no, settings, caplog
+    ):
+        settings.PROVIDER_TOKEN_COST = "claude:1:3"
+        mock_cache.get.return_value = None
+        provider = MagicMock()
+        provider.name = "claude"
+        provider._model = "test-model"
+        provider.generate_stream.return_value = iter(
+            ["No", " thanks", StreamUsage(input_tokens=9, output_tokens=5)]
+        )
+        mock_registry.get.return_value = provider
+        mock_registry.get_fallbacks.return_value = []
+
+        with caplog.at_level(logging.INFO, logger="wit.services"):
+            list(WitService.generate_stream("say-no"))
+
+        records = [
+            r for r in caplog.records if getattr(r, "event", None) == "generation"
+        ]
+        assert len(records) == 1
+        record = records[0]
+        assert record.streamed is True
+        assert record.persona == "say-no"
+        assert record.provider == "claude"
+        assert record.model == "test-model"
+        assert record.input_tokens == 9
+        assert record.output_tokens == 5
+        assert record.tokens == 14
+        # 9 input * $1/1M + 5 output * $3/1M
+        assert hasattr(record, "cost_usd")
+        assert record.cost_usd == pytest.approx(2.4e-5)
 
 
 @pytest.mark.django_db

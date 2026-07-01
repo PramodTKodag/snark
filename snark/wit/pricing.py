@@ -69,5 +69,13 @@ def get_rates(provider: str, model: str) -> tuple:
     return 0.0, 0.0
 
 
+def request_cost(
+    provider: str, model: str, input_tokens: int, output_tokens: int
+) -> float:
+    """Estimated USD cost for a single request from its split token counts."""
+    in_rate, out_rate = get_rates(provider, model)
+    return round((input_tokens or 0) * in_rate + (output_tokens or 0) * out_rate, 6)
+
+
 def has_pricing() -> bool:
     return bool(_price_map()) or bool(_env_overrides())

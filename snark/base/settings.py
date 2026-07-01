@@ -132,6 +132,29 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
+# Logging. LOG_FORMAT=json emits one JSON line per record (for Loki/Grafana);
+# plain is the human-readable default for local/dev.
+LOG_FORMAT = config("LOG_FORMAT", default="plain")
+LOG_LEVEL = config("LOG_LEVEL", default="INFO")
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "plain": {
+            "format": "%(asctime)s %(levelname)s %(name)s %(message)s",
+        },
+        "json": {"()": "base.logging.JsonFormatter"},
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "json" if LOG_FORMAT == "json" else "plain",
+        },
+    },
+    "root": {"handlers": ["console"], "level": LOG_LEVEL},
+}
+
 STATIC_URL = f"/{API_PREFIX}/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
