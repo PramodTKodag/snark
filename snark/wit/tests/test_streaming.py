@@ -61,6 +61,11 @@ class TestProviderStreamUsage:
 
         assert [o for o in out if isinstance(o, str)] == ["No", " thanks"]
         assert out[-1] == StreamUsage(input_tokens=11, output_tokens=4)
+        # Regression (#70): the groq SDK 0.13.x rejects a bare `stream_options`
+        # kwarg (TypeError). It must be forwarded via `extra_body`.
+        call_kwargs = client.chat.completions.create.call_args.kwargs
+        assert "stream_options" not in call_kwargs
+        assert call_kwargs["extra_body"] == {"stream_options": {"include_usage": True}}
 
     @patch("anthropic.Anthropic")
     def test_claude_stream_yields_deltas_then_usage(self, mock_cls):
