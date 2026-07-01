@@ -1,6 +1,7 @@
 .PHONY: help up down build logs test test-cov format lint migrate makemigrations seed shell \
 	mcp-install mcp mcp-http mcp-inspect mcp-test \
-	ensure-admin admin prune-logs update-pricing
+	ensure-admin admin prune-logs update-pricing \
+	migrate-docker makemigrations-docker update-pricing-docker
 
 # snark-mcp config. SNARK_API_URL defaults to the port snark runs on (WIT_PORT
 # from .env, else 8100). Override on the command line, e.g.
@@ -10,6 +11,11 @@ WIT_PORT := $(if $(WIT_PORT),$(WIT_PORT),8100)
 SNARK_API_URL ?= http://localhost:$(WIT_PORT)
 MCP_PORT ?= 8000
 DAYS ?= 90
+
+# Run manage.py inside the already-running dev container (needs `make up`).
+# The *-docker targets use this so migrations/commands hit the live DB without
+# a Python toolchain on the host.
+DC_MANAGE := docker compose --profile dev exec -T -w /app/snark wit-dev python manage.py
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -41,8 +47,14 @@ lint: ## Run flake8 linter
 migrate: ## Run Django migrations
 	cd snark && python manage.py migrate
 
+migrate-docker: ## Apply all migrations inside the running dev container
+	$(DC_MANAGE) migrate
+
 makemigrations: ## Generate Django migrations
 	cd snark && python manage.py makemigrations wit
+
+makemigrations-docker: ## Generate wit migrations inside the running dev container
+	$(DC_MANAGE) makemigrations wit
 
 seed: ## Seed personas
 	cd snark && python manage.py seed_personas
@@ -58,6 +70,9 @@ prune-logs: ## Delete response logs older than DAYS (default 90)
 
 update-pricing: ## Refresh wit/pricing_data.json from LiteLLM's model cost map
 	cd snark && python manage.py update_pricing
+
+update-pricing-docker: ## Refresh the vendored pricing map inside the running dev container
+	$(DC_MANAGE) update_pricing
 
 shell: ## Django shell
 	cd snark && python manage.py shell
