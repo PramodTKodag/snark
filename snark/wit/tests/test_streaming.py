@@ -38,7 +38,25 @@ def test_base_generate_stream_yields_text_then_usage():
     assert out[-1].tokens_used == 7
 
 
+class _CtxManager:
+    """Minimal fake for ``with client.x(...) as y`` streaming context managers."""
+
+    def __init__(self, value):
+        self._value = value
+
+    def __enter__(self):
+        return self._value
+
+    def __exit__(self, *exc):
+        return False
+
+
 class TestProviderStreamUsage:
+    """Each fake accepts ONLY the kwargs the provider actually passes, so an
+    unexpected/renamed kwarg raises TypeError like the real SDK would. This
+    closes the gap that let the ``stream_options`` break (#70) pass CI — the
+    prior permissive MagicMocks accepted any kwarg."""
+
     @patch("groq.Groq")
     def test_groq_stream_yields_deltas_then_usage(self, mock_cls):
         client = MagicMock()
@@ -55,14 +73,20 @@ class TestProviderStreamUsage:
         usage_chunk = MagicMock(
             choices=[], usage=MagicMock(prompt_tokens=11, completion_tokens=4)
         )
-        client.chat.completions.create.return_value = iter([c1, c2, usage_chunk])
+
+        def fake_create(
+            *, model, max_tokens, temperature, messages, stream, extra_body
+        ):
+            # A bare `stream_options=` kwarg (the #70 bug) raises TypeError here.
+            return iter([c1, c2, usage_chunk])
+
+        client.chat.completions.create.side_effect = fake_create
 
         out = list(GroqProvider(api_key="k", model="m").generate_stream("s", "u"))
 
         assert [o for o in out if isinstance(o, str)] == ["No", " thanks"]
         assert out[-1] == StreamUsage(input_tokens=11, output_tokens=4)
-        # Regression (#70): the groq SDK 0.13.x rejects a bare `stream_options`
-        # kwarg (TypeError). It must be forwarded via `extra_body`.
+        # Regression (#70): usage is forwarded via extra_body, not a raw kwarg.
         call_kwargs = client.chat.completions.create.call_args.kwargs
         assert "stream_options" not in call_kwargs
         assert call_kwargs["extra_body"] == {"stream_options": {"include_usage": True}}
@@ -76,7 +100,11 @@ class TestProviderStreamUsage:
         stream_ctx.get_final_message.return_value = MagicMock(
             usage=MagicMock(input_tokens=9, output_tokens=5)
         )
-        client.messages.stream.return_value.__enter__.return_value = stream_ctx
+
+        def fake_stream(*, model, max_tokens, temperature, system, messages):
+            return _CtxManager(stream_ctx)
+
+        client.messages.stream.side_effect = fake_stream
 
         out = list(ClaudeProvider(api_key="k", model="m").generate_stream("s", "u"))
 
@@ -96,7 +124,11 @@ class TestProviderStreamUsage:
             text=" thanks",
             usage_metadata=MagicMock(prompt_token_count=20, candidates_token_count=6),
         )
-        client.models.generate_content_stream.return_value = iter([c1, c2])
+
+        def fake_stream(*, model, contents, config):
+            return iter([c1, c2])
+
+        client.models.generate_content_stream.side_effect = fake_stream
 
         out = list(GeminiProvider(api_key="k", model="m").generate_stream("s", "u"))
 
