@@ -39,6 +39,7 @@ class TestGenerateSpotlights:
     ):
         mock_cache.get.return_value = None
         provider = MagicMock()
+        provider.name = "groq"
         provider.generate.return_value = AIResponse(
             text="ok", tokens_used=1, model="m", provider="groq", latency_ms=1
         )

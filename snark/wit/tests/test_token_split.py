@@ -72,6 +72,7 @@ class TestServiceTokenSplit:
     ):
         mock_cache.get.return_value = None
         provider = MagicMock()
+        provider.name = "claude"
         provider.generate.return_value = AIResponse(
             text="No",
             tokens_used=30,

@@ -180,6 +180,8 @@ def test_dashboard_index_injects_full_context(persona_no, admin_urls):
     ctx = response.context_data
     for key in (
         "kpis",
+        "reliability",
+        "provider_errors",
         "cost",
         "providers",
         "provider_breakdown",

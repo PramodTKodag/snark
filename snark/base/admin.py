@@ -26,6 +26,8 @@ class SnarkAdminSite(admin.AdminSite):
         extra.update(
             {
                 "kpis": stats.dashboard_kpis(),
+                "reliability": stats.reliability_stats(),
+                "provider_errors": stats.provider_error_breakdown(),
                 "cost": stats.cost_estimate(),
                 "cost_by_persona": stats.cost_by_persona(10),
                 "providers": stats.provider_status(),

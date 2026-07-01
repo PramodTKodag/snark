@@ -13,7 +13,7 @@ from django.db.models.functions import TruncDate
 from django.utils import timezone
 
 from . import pricing
-from .models import Persona, ResponseLog
+from .models import GenerationEvent, Persona, ResponseLog
 
 
 def usage_stats() -> dict:
@@ -115,6 +115,43 @@ def provider_breakdown() -> list:
             }
         )
     return result
+
+
+def reliability_stats() -> dict:
+    """Error / provider-fallback / content-filter rates over all events."""
+    from django.db.models import Q
+
+    agg = GenerationEvent.objects.aggregate(
+        total=Count("id"),
+        errors=Count("id", filter=Q(success=False)),
+        fallbacks=Count("id", filter=Q(fell_back=True)),
+        filtered=Count("id", filter=Q(content_filtered=True)),
+    )
+    total = agg["total"] or 0
+
+    def rate(n):
+        return round(100 * n / total, 1) if total else 0.0
+
+    return {
+        "total": total,
+        "errors": agg["errors"] or 0,
+        "fallbacks": agg["fallbacks"] or 0,
+        "filtered": agg["filtered"] or 0,
+        "error_rate": rate(agg["errors"] or 0),
+        "fallback_rate": rate(agg["fallbacks"] or 0),
+        "content_filter_rate": rate(agg["filtered"] or 0),
+    }
+
+
+def provider_error_breakdown() -> list:
+    """Per-provider count of failed generation events, most failures first."""
+    rows = (
+        GenerationEvent.objects.filter(success=False)
+        .values("provider_name")
+        .annotate(errors=Count("id"))
+        .order_by("-errors")
+    )
+    return [{"provider": r["provider_name"], "errors": r["errors"]} for r in rows]
 
 
 def model_usage(limit: int = 10) -> list:

@@ -6,7 +6,7 @@ import time
 from django.core.cache import cache
 
 from .constants import ALLOWED_LENGTHS, ALLOWED_MOODS, LENGTH_MAX_TOKENS
-from .models import Persona, ResponseLog
+from .models import GenerationEvent, Persona, ResponseLog
 from .providers import ProviderRegistry
 from .providers.base import ContentFilterError, ProviderError, StreamUsage
 
@@ -55,6 +55,7 @@ class WitService:
             user_prompt=user_prompt,
             temperature=persona.temperature,
             max_tokens=max_tokens,
+            persona=persona,
         )
 
         ResponseLog.objects.create(
@@ -104,7 +105,8 @@ class WitService:
 
         start = time.monotonic()
         last_error: Exception | None = None
-        for provider in providers:
+        content_filtered = False
+        for index, provider in enumerate(providers):
             collected: list[str] = []
             # Set from the provider's terminal StreamUsage marker. If the stream
             # errors before that marker (content filter / provider failure), it
@@ -124,6 +126,8 @@ class WitService:
                     yield {"delta": chunk}
             except (ContentFilterError, ProviderError) as exc:
                 last_error = exc
+                if isinstance(exc, ContentFilterError):
+                    content_filtered = True
                 if collected:
                     # Partial output already sent — can't cleanly switch providers.
                     logger.warning(
@@ -140,9 +144,32 @@ class WitService:
             WitService._log_stream(
                 persona, user_input, text, provider, latency_ms, usage
             )
+            model_name = (
+                getattr(provider, "_model", None)
+                or getattr(provider, "_model_name", None)
+                or provider.name
+            )
+            WitService._record_event(
+                persona,
+                provider.name,
+                model_name,
+                success=True,
+                fell_back=index > 0,
+                content_filtered=content_filtered,
+                streamed=True,
+            )
             yield {"persona": persona.name, "done": True}
             return
 
+        WitService._record_event(
+            persona,
+            primary.name,
+            "",
+            success=False,
+            fell_back=False,
+            content_filtered=content_filtered,
+            streamed=True,
+        )
         raise last_error or ProviderError("All AI providers failed to stream")
 
     @staticmethod
@@ -172,22 +199,60 @@ class WitService:
             logger.exception("Failed to log streamed response")
 
     @staticmethod
+    def _record_event(
+        persona,
+        provider_name,
+        model_name,
+        *,
+        success,
+        fell_back,
+        content_filtered,
+        streamed,
+    ):
+        """Record a reliability event; never let logging break generation."""
+        try:
+            GenerationEvent.objects.create(
+                persona=persona,
+                provider_name=provider_name,
+                model_name=model_name or "",
+                success=success,
+                fell_back=fell_back,
+                content_filtered=content_filtered,
+                streamed=streamed,
+            )
+        except Exception:
+            logger.exception("Failed to record GenerationEvent")
+
+    @staticmethod
     def _generate_with_fallback(
         system_prompt: str,
         user_prompt: str,
         temperature: float,
         max_tokens: int,
+        persona=None,
     ):
         """Try the default provider, then fall back to others on failure."""
         primary = ProviderRegistry.get()
+        content_filtered = False
         try:
-            return primary.generate(
+            resp = primary.generate(
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
                 temperature=temperature,
                 max_tokens=max_tokens,
             )
+            WitService._record_event(
+                persona,
+                primary.name,
+                resp.model,
+                success=True,
+                fell_back=False,
+                content_filtered=False,
+                streamed=False,
+            )
+            return resp
         except ContentFilterError:
+            content_filtered = True
             logger.warning(
                 "Content filter on %s, retrying with softened prompt", primary.name
             )
@@ -197,12 +262,22 @@ class WitService:
                 "Avoid anything offensive, mean-spirited, or inappropriate."
             )
             try:
-                return primary.generate(
+                resp = primary.generate(
                     system_prompt=softened_system,
                     user_prompt=user_prompt,
                     temperature=max(temperature - 0.2, 0.3),
                     max_tokens=max_tokens,
                 )
+                WitService._record_event(
+                    persona,
+                    primary.name,
+                    resp.model,
+                    success=True,
+                    fell_back=False,
+                    content_filtered=True,
+                    streamed=False,
+                )
+                return resp
             except (ContentFilterError, ProviderError):
                 logger.warning(
                     "Softened retry failed on %s, trying fallbacks", primary.name
@@ -213,16 +288,39 @@ class WitService:
         for fallback in ProviderRegistry.get_fallbacks(exclude=primary.name):
             try:
                 logger.info("Falling back to provider: %s", fallback.name)
-                return fallback.generate(
+                resp = fallback.generate(
                     system_prompt=system_prompt,
                     user_prompt=user_prompt,
                     temperature=temperature,
                     max_tokens=max_tokens,
                 )
-            except (ContentFilterError, ProviderError) as exc:
+                WitService._record_event(
+                    persona,
+                    fallback.name,
+                    resp.model,
+                    success=True,
+                    fell_back=True,
+                    content_filtered=content_filtered,
+                    streamed=False,
+                )
+                return resp
+            except ContentFilterError as exc:
+                content_filtered = True
+                logger.warning("Fallback %s also failed: %s", fallback.name, exc)
+                continue
+            except ProviderError as exc:
                 logger.warning("Fallback %s also failed: %s", fallback.name, exc)
                 continue
 
+        WitService._record_event(
+            persona,
+            primary.name,
+            "",
+            success=False,
+            fell_back=False,
+            content_filtered=content_filtered,
+            streamed=False,
+        )
         raise ProviderError("All AI providers failed to generate a response")
 
     @staticmethod
