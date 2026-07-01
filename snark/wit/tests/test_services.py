@@ -31,6 +31,52 @@ class TestWitService:
         assert ResponseLog.objects.filter(persona=persona_no).count() == 1
         assert "ip_address" not in [f.name for f in ResponseLog._meta.get_fields()]
 
+    @patch("wit.services.ProviderRegistry")
+    @patch("wit.services.cache")
+    def test_generate_redacts_input_by_default(
+        self, mock_cache, mock_registry, persona_no, settings
+    ):
+        settings.LOG_INPUT_MODE = "redacted"
+        mock_cache.get.return_value = None
+        mock_provider = MagicMock()
+        mock_provider.name = "claude"
+        mock_provider.generate.return_value = AIResponse(
+            text="No thanks",
+            tokens_used=15,
+            model="test-model",
+            provider="claude",
+            latency_ms=50,
+        )
+        mock_registry.get.return_value = mock_provider
+
+        WitService.generate("say-no", user_input="reach me at a@b.com")
+
+        log = ResponseLog.objects.get(persona=persona_no)
+        assert log.input_text == "reach me at [email]"
+
+    @patch("wit.services.ProviderRegistry")
+    @patch("wit.services.cache")
+    def test_generate_stores_raw_input_when_opted_in(
+        self, mock_cache, mock_registry, persona_no, settings
+    ):
+        settings.LOG_INPUT_MODE = "raw"
+        mock_cache.get.return_value = None
+        mock_provider = MagicMock()
+        mock_provider.name = "claude"
+        mock_provider.generate.return_value = AIResponse(
+            text="No thanks",
+            tokens_used=15,
+            model="test-model",
+            provider="claude",
+            latency_ms=50,
+        )
+        mock_registry.get.return_value = mock_provider
+
+        WitService.generate("say-no", user_input="reach me at a@b.com")
+
+        log = ResponseLog.objects.get(persona=persona_no)
+        assert log.input_text == "reach me at a@b.com"
+
     @patch("wit.services.cache")
     def test_generate_returns_cached(self, mock_cache, persona_no):
         mock_cache.get.side_effect = lambda key: (

@@ -5,6 +5,7 @@ import time
 
 from django.core.cache import cache
 
+from . import privacy
 from .constants import ALLOWED_LENGTHS, ALLOWED_MOODS, LENGTH_MAX_TOKENS
 from .models import GenerationEvent, Persona, ResponseLog
 from .providers import ProviderRegistry
@@ -60,7 +61,7 @@ class WitService:
 
         ResponseLog.objects.create(
             persona=persona,
-            input_text=user_input,
+            input_text=privacy.store_input(user_input),
             response_text=ai_response.text,
             tokens_used=ai_response.tokens_used,
             input_tokens=ai_response.input_tokens,
@@ -188,7 +189,7 @@ class WitService:
         try:
             ResponseLog.objects.create(
                 persona=persona,
-                input_text=user_input,
+                input_text=privacy.store_input(user_input),
                 response_text=text,
                 tokens_used=input_tokens + output_tokens,
                 input_tokens=input_tokens,

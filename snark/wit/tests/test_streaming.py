@@ -163,6 +163,25 @@ class TestServiceStreaming:
 
     @patch("wit.services.ProviderRegistry")
     @patch("wit.services.cache")
+    def test_stream_redacts_input_by_default(
+        self, mock_cache, mock_registry, persona_no, settings
+    ):
+        settings.LOG_INPUT_MODE = "redacted"
+        mock_cache.get.return_value = None
+        provider = MagicMock()
+        provider.name = "groq"
+        provider._model = "test-model"
+        provider.generate_stream.return_value = iter(["No", " thanks"])
+        mock_registry.get.return_value = provider
+        mock_registry.get_fallbacks.return_value = []
+
+        list(WitService.generate_stream("say-no", user_input="reach me at a@b.com"))
+
+        log = ResponseLog.objects.get(persona=persona_no)
+        assert log.input_text == "reach me at [email]"
+
+    @patch("wit.services.ProviderRegistry")
+    @patch("wit.services.cache")
     def test_stream_persists_split_tokens(self, mock_cache, mock_registry, persona_no):
         mock_cache.get.return_value = None
         provider = MagicMock()

@@ -273,3 +273,17 @@ ADMIN_PASSWORD = config("ADMIN_PASSWORD", default="")
 # Parsed in wit/pricing.py. Leave empty to rely entirely on the vendored map.
 # Estimate only: list prices, cached/batch discounts not modeled.
 PROVIDER_TOKEN_COST = config("PROVIDER_TOKEN_COST", default="")
+
+# Data retention & privacy (privacy-forward defaults; pruned on startup + cron).
+# Days to keep raw request logs / reliability events (0 = keep forever).
+RESPONSE_LOG_RETENTION_DAYS = config(
+    "RESPONSE_LOG_RETENTION_DAYS", default=30, cast=int
+)
+GENERATION_EVENT_RETENTION_DAYS = config(
+    "GENERATION_EVENT_RETENTION_DAYS", default=90, cast=int
+)
+# How to persist the user's input on ResponseLog:
+#   redacted (default) — strip structured PII (email/phone/card/ssn) + truncate
+#   none               — don't store it at all
+#   raw                — store verbatim (opt-in; users may paste PII publicly)
+LOG_INPUT_MODE = config("LOG_INPUT_MODE", default="redacted")
