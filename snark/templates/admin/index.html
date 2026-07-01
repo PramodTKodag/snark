@@ -126,7 +126,7 @@
       <div class="snark-card accent">
         <div class="label">{% translate "Est. cost" %}</div>
         <div class="value">${{ cost.total }}</div>
-        <div class="sub">{% translate "blended token estimate" %}</div>
+        <div class="sub">{% translate "per-model input/output estimate" %}</div>
       </div>
       {% endif %}
     </div>
@@ -157,6 +157,8 @@
               <th class="num">{% translate "Count" %}</th>
               <th class="num">{% translate "Share" %}</th>
               <th class="num">{% translate "Avg ms" %}</th>
+              <th class="num">{% translate "Input" %}</th>
+              <th class="num">{% translate "Output" %}</th>
               <th class="num">{% translate "Tokens" %}</th>
               {% if cost.configured %}<th class="num">{% translate "Est. $" %}</th>{% endif %}
             </tr>
@@ -168,6 +170,8 @@
               <td class="num">{{ row.count }}</td>
               <td class="num">{{ row.share }}%</td>
               <td class="num">{{ row.avg_latency }}</td>
+              <td class="num">{{ row.input_tokens }}</td>
+              <td class="num">{{ row.output_tokens }}</td>
               <td class="num">{{ row.tokens }}</td>
               {% if cost.configured %}
               <td class="num">{% for cp in cost.per_provider %}{% if cp.provider == row.provider %}${{ cp.cost }}{% endif %}{% endfor %}</td>

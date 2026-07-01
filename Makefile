@@ -1,6 +1,6 @@
 .PHONY: help up down build logs test test-cov format lint migrate makemigrations seed shell \
 	mcp-install mcp mcp-http mcp-inspect mcp-test \
-	ensure-admin admin prune-logs
+	ensure-admin admin prune-logs update-pricing
 
 # snark-mcp config. SNARK_API_URL defaults to the port snark runs on (WIT_PORT
 # from .env, else 8100). Override on the command line, e.g.
@@ -55,6 +55,9 @@ admin: ## Create an admin superuser interactively
 
 prune-logs: ## Delete response logs older than DAYS (default 90)
 	cd snark && python manage.py prune_logs --days $(DAYS)
+
+update-pricing: ## Refresh wit/pricing_data.json from LiteLLM's model cost map
+	cd snark && python manage.py update_pricing
 
 shell: ## Django shell
 	cd snark && python manage.py shell

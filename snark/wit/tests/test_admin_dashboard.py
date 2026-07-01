@@ -92,9 +92,7 @@ def test_provider_breakdown_shares(persona_no):
 def test_provider_breakdown_sums_input_output_tokens(persona_no):
     _log(persona_no, provider="claude", input_tokens=100, output_tokens=40, tokens=140)
     _log(persona_no, provider="claude", input_tokens=10, output_tokens=5, tokens=15)
-    claude = next(
-        r for r in stats.provider_breakdown() if r["provider"] == "claude"
-    )
+    claude = next(r for r in stats.provider_breakdown() if r["provider"] == "claude")
     assert claude["input_tokens"] == 110
     assert claude["output_tokens"] == 45
 

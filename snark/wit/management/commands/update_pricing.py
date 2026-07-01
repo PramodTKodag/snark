@@ -19,7 +19,12 @@ def extract(raw: dict) -> dict:
             continue
         prov = entry.get("litellm_provider", "")
         prefix = key.split("/")[0]
-        if prov in WANT_PROVIDERS or prefix in {"groq", "gemini", "claude", "anthropic"}:
+        if prov in WANT_PROVIDERS or prefix in {
+            "groq",
+            "gemini",
+            "claude",
+            "anthropic",
+        }:
             i = entry.get("input_cost_per_token")
             o = entry.get("output_cost_per_token")
             if isinstance(i, (int, float)) and isinstance(o, (int, float)):
