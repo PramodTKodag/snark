@@ -85,6 +85,9 @@ def test_latency_stats(persona_no):
     assert lat["avg"] == 250
     assert lat["max"] == 400
     assert lat["p95"] >= 300
+    # percentiles are monotonic and bounded by max
+    assert lat["p50"] <= lat["p95"] <= lat["p99"] <= lat["max"]
+    assert lat["p99"] == 400
 
 
 @pytest.mark.django_db
@@ -116,6 +119,20 @@ def test_cost_estimate(persona_no, settings):
 
 
 @pytest.mark.django_db
+def test_cost_by_persona(persona_no, persona_roast, settings):
+    settings.PROVIDER_TOKEN_COST = {"groq": 0.0, "claude": 2.0}
+    _log(persona_no, provider="claude", tokens=1_000_000)  # $2.00
+    _log(persona_roast, provider="groq", tokens=500_000)  # $0.00
+    rows = stats.cost_by_persona()
+    top = rows[0]
+    assert top["slug"] == "say-no"
+    assert top["cost"] == pytest.approx(2.0, abs=0.001)
+    assert top["tokens"] == 1_000_000
+    roast = next(r for r in rows if r["slug"] == "roast")
+    assert roast["cost"] == 0.0
+
+
+@pytest.mark.django_db
 def test_dashboard_index_injects_full_context(persona_no, admin_urls):
     _log(persona_no)
     admin_user = get_user_model().objects.create_superuser(
@@ -137,6 +154,7 @@ def test_dashboard_index_injects_full_context(persona_no, admin_urls):
         "recent",
         "health",
         "over_time",
+        "cost_by_persona",
     ):
         assert key in ctx, f"missing dashboard context key: {key}"
 

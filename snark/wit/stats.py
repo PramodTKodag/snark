@@ -61,23 +61,28 @@ def dashboard_kpis() -> dict:
     }
 
 
+def _percentile(sorted_values: list, q: float) -> int:
+    """Nearest-rank percentile over an already-sorted list (0 when empty)."""
+    if not sorted_values:
+        return 0
+    idx = min(len(sorted_values) - 1, int(round(q * (len(sorted_values) - 1))))
+    return sorted_values[idx]
+
+
 def latency_stats(sample: int = 1000) -> dict:
-    """avg/max over all rows; p95 over the most recent ``sample`` rows."""
+    """avg/max over all rows; p50/p95/p99 over the most recent ``sample`` rows."""
     agg = ResponseLog.objects.aggregate(avg=Avg("latency_ms"), max=Max("latency_ms"))
-    latencies = list(
+    latencies = sorted(
         ResponseLog.objects.order_by("-created_at").values_list(
             "latency_ms", flat=True
         )[:sample]
     )
-    p95 = 0
-    if latencies:
-        latencies.sort()
-        idx = min(len(latencies) - 1, int(round(0.95 * (len(latencies) - 1))))
-        p95 = latencies[idx]
     return {
         "avg": round(agg["avg"] or 0),
+        "p50": _percentile(latencies, 0.50),
+        "p95": _percentile(latencies, 0.95),
+        "p99": _percentile(latencies, 0.99),
         "max": agg["max"] or 0,
-        "p95": p95,
         "sample": len(latencies),
     }
 
@@ -243,3 +248,30 @@ def cost_estimate() -> dict:
         "per_provider": per_provider,
         "configured": any(bool(v) for v in pricing.values()),
     }
+
+
+def cost_by_persona(limit: int = 10) -> list:
+    """Estimated USD spend per persona = sum over providers of tokens * rate.
+
+    Segments the existing token/provider data by persona so operators can see
+    which personas drive spend, not just the aggregate bill.
+    """
+    pricing = getattr(settings, "PROVIDER_TOKEN_COST", {}) or {}
+    rows = ResponseLog.objects.values(
+        "persona__slug", "persona__name", "provider_name"
+    ).annotate(tokens=Sum("tokens_used"))
+    by_persona = {}
+    for row in rows:
+        slug = row["persona__slug"]
+        entry = by_persona.setdefault(
+            slug,
+            {"slug": slug, "name": row["persona__name"], "tokens": 0, "cost": 0.0},
+        )
+        tokens = row["tokens"] or 0
+        rate = pricing.get(row["provider_name"], 0) or 0
+        entry["tokens"] += tokens
+        entry["cost"] += tokens / 1_000_000 * rate
+    result = sorted(by_persona.values(), key=lambda entry: entry["cost"], reverse=True)
+    for entry in result:
+        entry["cost"] = round(entry["cost"], 4)
+    return result[:limit]

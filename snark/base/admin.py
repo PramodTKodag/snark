@@ -27,6 +27,7 @@ class SnarkAdminSite(admin.AdminSite):
             {
                 "kpis": stats.dashboard_kpis(),
                 "cost": stats.cost_estimate(),
+                "cost_by_persona": stats.cost_by_persona(10),
                 "providers": stats.provider_status(),
                 "provider_breakdown": breakdown,
                 "model_usage": stats.model_usage(),

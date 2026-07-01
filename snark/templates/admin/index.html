@@ -190,8 +190,16 @@
             <div class="label">{% translate "Average" %}</div>
           </div>
           <div class="snark-stat">
+            <div class="value">{{ latency.p50 }}<small class="snark-muted"> ms</small></div>
+            <div class="label">{% translate "P50" %}</div>
+          </div>
+          <div class="snark-stat">
             <div class="value">{{ latency.p95 }}<small class="snark-muted"> ms</small></div>
             <div class="label">{% translate "P95" %}</div>
+          </div>
+          <div class="snark-stat">
+            <div class="value">{{ latency.p99 }}<small class="snark-muted"> ms</small></div>
+            <div class="label">{% translate "P99" %}</div>
           </div>
           <div class="snark-stat">
             <div class="value">{{ latency.max }}<small class="snark-muted"> ms</small></div>
@@ -199,7 +207,7 @@
           </div>
         </div>
         <p class="sub snark-muted" style="margin-top:14px;">
-          {% blocktranslate with n=latency.sample %}P95 over the most recent {{ n }} responses.{% endblocktranslate %}
+          {% blocktranslate with n=latency.sample %}Percentiles over the most recent {{ n }} responses.{% endblocktranslate %}
         </p>
 
         {# 5. Model usage #}
@@ -268,6 +276,31 @@
         {% endif %}
       </div>
     </div>
+
+    {% if cost.configured %}
+    {# 7b. Estimated cost by persona #}
+    <h2>{% translate "Cost by persona" %}</h2>
+    <div class="snark-panel">
+      <table class="snark-table">
+        <thead>
+          <tr>
+            <th>{% translate "Persona" %}</th>
+            <th class="num">{% translate "Tokens" %}</th>
+            <th class="num">{% translate "Est. $" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in cost_by_persona %}
+          <tr>
+            <td>{{ p.name }}<br><span class="snark-muted" style="font-size:11px;">{{ p.slug }}</span></td>
+            <td class="num">{{ p.tokens }}</td>
+            <td class="num">${{ p.cost }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
 
     {# 8. Recent activity #}
     <h2>{% translate "Recent activity" %}</h2>
