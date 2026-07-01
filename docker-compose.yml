@@ -65,6 +65,7 @@ services:
     command: >
       sh -c "cd snark &&
              python manage.py migrate &&
+             python manage.py ensure_admin &&
              python manage.py seed_personas &&
              python manage.py runserver 0.0.0.0:$$INTERNAL_PORT"
     profiles:
@@ -87,6 +88,7 @@ services:
     command: >
       sh -c "cd snark &&
              python manage.py migrate &&
+             python manage.py ensure_admin &&
              python manage.py seed_personas &&
              gunicorn base.wsgi:application --bind 0.0.0.0:$$INTERNAL_PORT
              --workers 2 --threads 2 --max-requests 1000 --max-requests-jitter 100"
