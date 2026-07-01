@@ -37,11 +37,22 @@ def admin_urls():
         clear_url_caches()
 
 
-def _log(persona, provider="groq", model="m", tokens=10, latency=100, age_days=0):
+def _log(
+    persona,
+    provider="groq",
+    model="m",
+    tokens=10,
+    latency=100,
+    age_days=0,
+    input_tokens=0,
+    output_tokens=0,
+):
     log = ResponseLog.objects.create(
         persona=persona,
         response_text="hi",
         tokens_used=tokens,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
         latency_ms=latency,
         provider_name=provider,
         model_name=model,
@@ -78,6 +89,17 @@ def test_provider_breakdown_shares(persona_no):
 
 
 @pytest.mark.django_db
+def test_provider_breakdown_sums_input_output_tokens(persona_no):
+    _log(persona_no, provider="claude", input_tokens=100, output_tokens=40, tokens=140)
+    _log(persona_no, provider="claude", input_tokens=10, output_tokens=5, tokens=15)
+    claude = next(
+        r for r in stats.provider_breakdown() if r["provider"] == "claude"
+    )
+    assert claude["input_tokens"] == 110
+    assert claude["output_tokens"] == 45
+
+
+@pytest.mark.django_db
 def test_latency_stats(persona_no):
     for ms in (100, 200, 300, 400):
         _log(persona_no, latency=ms)
@@ -110,24 +132,40 @@ def test_unused_personas(persona_no, persona_roast):
 
 @pytest.mark.django_db
 def test_cost_estimate(persona_no, settings):
-    settings.PROVIDER_TOKEN_COST = {"groq": 0.0, "claude": 1.0}
-    _log(persona_no, provider="claude", tokens=1_000_000)
-    _log(persona_no, provider="groq", tokens=500_000)
+    # claude override: input $1/1M, output $3/1M. groq unpriced (model "m").
+    settings.PROVIDER_TOKEN_COST = "claude:1:3"
+    _log(
+        persona_no,
+        provider="claude",
+        tokens=2_000_000,
+        input_tokens=1_000_000,
+        output_tokens=1_000_000,
+    )
+    _log(persona_no, provider="groq", tokens=500_000, input_tokens=500_000)
     cost = stats.cost_estimate()
-    assert cost["total"] == pytest.approx(1.0, abs=0.001)  # 1M claude tokens * $1/1M
+    # 1M input * $1/1M + 1M output * $3/1M = $4.00; groq (model "m") = $0.
+    assert cost["total"] == pytest.approx(4.0, abs=0.001)
     assert cost["configured"] is True
+    claude = next(r for r in cost["per_provider"] if r["provider"] == "claude")
+    assert claude["cost"] == pytest.approx(4.0, abs=0.001)
 
 
 @pytest.mark.django_db
 def test_cost_by_persona(persona_no, persona_roast, settings):
-    settings.PROVIDER_TOKEN_COST = {"groq": 0.0, "claude": 2.0}
-    _log(persona_no, provider="claude", tokens=1_000_000)  # $2.00
-    _log(persona_roast, provider="groq", tokens=500_000)  # $0.00
+    settings.PROVIDER_TOKEN_COST = "claude:1:3"
+    _log(
+        persona_no,
+        provider="claude",
+        tokens=2_000_000,
+        input_tokens=1_000_000,
+        output_tokens=1_000_000,
+    )  # $4.00
+    _log(persona_roast, provider="groq", tokens=500_000, input_tokens=500_000)  # $0.00
     rows = stats.cost_by_persona()
     top = rows[0]
     assert top["slug"] == "say-no"
-    assert top["cost"] == pytest.approx(2.0, abs=0.001)
-    assert top["tokens"] == 1_000_000
+    assert top["cost"] == pytest.approx(4.0, abs=0.001)
+    assert top["tokens"] == 2_000_000
     roast = next(r for r in rows if r["slug"] == "roast")
     assert roast["cost"] == 0.0
 
