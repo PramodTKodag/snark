@@ -83,18 +83,20 @@ class GroqProvider(AIProvider):
 
         latency_ms = int((time.monotonic() - start) * 1000)
         text = choice.message.content if choice else ""
-        tokens_used = 0
+        input_tokens = 0
+        output_tokens = 0
         if response.usage:
-            tokens_used = (response.usage.prompt_tokens or 0) + (
-                response.usage.completion_tokens or 0
-            )
+            input_tokens = response.usage.prompt_tokens or 0
+            output_tokens = response.usage.completion_tokens or 0
 
         return AIResponse(
             text=text,
-            tokens_used=tokens_used,
+            tokens_used=input_tokens + output_tokens,
             model=self._model,
             provider=self.name,
             latency_ms=latency_ms,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
         )
 
     def generate_stream(

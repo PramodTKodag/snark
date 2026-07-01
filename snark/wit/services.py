@@ -62,6 +62,8 @@ class WitService:
             input_text=user_input,
             response_text=ai_response.text,
             tokens_used=ai_response.tokens_used,
+            input_tokens=ai_response.input_tokens,
+            output_tokens=ai_response.output_tokens,
             latency_ms=ai_response.latency_ms,
             provider_name=ai_response.provider,
             model_name=ai_response.model,

@@ -12,6 +12,7 @@ from django.db.models import Avg, Count, Max, Sum
 from django.db.models.functions import TruncDate
 from django.utils import timezone
 
+from . import pricing
 from .models import Persona, ResponseLog
 
 
@@ -92,7 +93,11 @@ def provider_breakdown() -> list:
     rows = (
         ResponseLog.objects.values("provider_name")
         .annotate(
-            count=Count("id"), avg_latency=Avg("latency_ms"), tokens=Sum("tokens_used")
+            count=Count("id"),
+            avg_latency=Avg("latency_ms"),
+            tokens=Sum("tokens_used"),
+            input_tokens=Sum("input_tokens"),
+            output_tokens=Sum("output_tokens"),
         )
         .order_by("-count")
     )
@@ -105,6 +110,8 @@ def provider_breakdown() -> list:
                 "share": round(100 * row["count"] / total, 1) if total else 0,
                 "avg_latency": round(row["avg_latency"] or 0),
                 "tokens": row["tokens"] or 0,
+                "input_tokens": row["input_tokens"] or 0,
+                "output_tokens": row["output_tokens"] or 0,
             }
         )
     return result
@@ -226,51 +233,68 @@ def system_health() -> dict:
 
 
 def cost_estimate() -> dict:
-    """Estimated USD spend from token counts x per-provider PROVIDER_TOKEN_COST."""
-    pricing = getattr(settings, "PROVIDER_TOKEN_COST", {}) or {}
-    rows = ResponseLog.objects.values("provider_name").annotate(
-        tokens=Sum("tokens_used")
+    """Estimated USD spend from split input/output tokens x per-model rates.
+
+    Rates are resolved per (provider, model) group from the vendored pricing map
+    (with the PROVIDER_TOKEN_COST env override), then rolled up to per-provider
+    totals for display. Streamed responses log 0 tokens so they contribute $0.
+    """
+    rows = ResponseLog.objects.values("provider_name", "model_name").annotate(
+        input_tokens=Sum("input_tokens"),
+        output_tokens=Sum("output_tokens"),
+        tokens=Sum("tokens_used"),
     )
-    per_provider = []
+    per_provider: dict = {}
     total = 0.0
     for row in rows:
         name = row["provider_name"] or "unknown"
-        tokens = row["tokens"] or 0
-        price = pricing.get(name, 0) or 0
-        cost = tokens / 1_000_000 * price
-        total += cost
-        per_provider.append(
-            {"provider": name, "tokens": tokens, "cost": round(cost, 4)}
+        in_rate, out_rate = pricing.get_rates(name, row["model_name"] or "")
+        cost = (row["input_tokens"] or 0) * in_rate + (row["output_tokens"] or 0) * (
+            out_rate
         )
-    per_provider.sort(key=lambda item: item["cost"], reverse=True)
+        total += cost
+        entry = per_provider.setdefault(
+            name, {"provider": name, "tokens": 0, "cost": 0.0}
+        )
+        entry["tokens"] += row["tokens"] or 0
+        entry["cost"] += cost
+    ordered = sorted(per_provider.values(), key=lambda item: item["cost"], reverse=True)
+    for entry in ordered:
+        entry["cost"] = round(entry["cost"], 4)
     return {
         "total": round(total, 2),
-        "per_provider": per_provider,
-        "configured": any(bool(v) for v in pricing.values()),
+        "per_provider": ordered,
+        "configured": pricing.has_pricing(),
     }
 
 
 def cost_by_persona(limit: int = 10) -> list:
-    """Estimated USD spend per persona = sum over providers of tokens * rate.
+    """Estimated USD spend per persona from split tokens x per-model rates.
 
-    Segments the existing token/provider data by persona so operators can see
+    Segments the token data by (persona, provider, model) so operators can see
     which personas drive spend, not just the aggregate bill.
     """
-    pricing = getattr(settings, "PROVIDER_TOKEN_COST", {}) or {}
     rows = ResponseLog.objects.values(
-        "persona__slug", "persona__name", "provider_name"
-    ).annotate(tokens=Sum("tokens_used"))
-    by_persona = {}
+        "persona__slug", "persona__name", "provider_name", "model_name"
+    ).annotate(
+        input_tokens=Sum("input_tokens"),
+        output_tokens=Sum("output_tokens"),
+        tokens=Sum("tokens_used"),
+    )
+    by_persona: dict = {}
     for row in rows:
         slug = row["persona__slug"]
         entry = by_persona.setdefault(
             slug,
             {"slug": slug, "name": row["persona__name"], "tokens": 0, "cost": 0.0},
         )
-        tokens = row["tokens"] or 0
-        rate = pricing.get(row["provider_name"], 0) or 0
-        entry["tokens"] += tokens
-        entry["cost"] += tokens / 1_000_000 * rate
+        in_rate, out_rate = pricing.get_rates(
+            row["provider_name"] or "", row["model_name"] or ""
+        )
+        entry["tokens"] += row["tokens"] or 0
+        entry["cost"] += (row["input_tokens"] or 0) * in_rate + (
+            row["output_tokens"] or 0
+        ) * out_rate
     result = sorted(by_persona.values(), key=lambda entry: entry["cost"], reverse=True)
     for entry in result:
         entry["cost"] = round(entry["cost"], 4)

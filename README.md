@@ -329,7 +329,7 @@ All configuration is via environment variables. See `.env.example` for the full 
 | `ADMIN_ENABLED` | `False` | Enable the opt-in Django admin UI |
 | `ADMIN_URL` | `admin/` | Path the admin mounts at when enabled (change it) |
 | `ADMIN_USERNAME` / `ADMIN_EMAIL` / `ADMIN_PASSWORD` | — | Optional superuser auto-bootstrap on startup |
-| `PROVIDER_TOKEN_COST` | `groq:0,gemini:0,claude:1.0` | Per-provider $/1M tokens for the admin dashboard cost estimate |
+| `PROVIDER_TOKEN_COST` | — (empty) | Optional price override for the dashboard cost estimate: `provider:input:output` per $1M (e.g. `claude:1:5`), or legacy `provider:blended`. Empty uses the vendored LiteLLM map (`make update-pricing`) |
 
 > **Behind a reverse proxy?** Set `USE_PROXY_SSL_HEADER=True` and `NUM_PROXIES=<n>` so HTTPS detection and per-IP rate limiting work correctly. Leave both unset for direct connections.
 
@@ -346,8 +346,19 @@ ADMIN_URL=manage-a1b2c3/          # change to a non-guessable path; keep the tra
 ADMIN_USERNAME=admin              # optional: auto-bootstrap a superuser on startup
 ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD=a-strong-password  # min 12 chars
-PROVIDER_TOKEN_COST=groq:0,gemini:0,claude:1.0  # per-provider USD per 1M tokens for the dashboard cost estimate (0 hides it; estimate only)
+# PROVIDER_TOKEN_COST=claude:1:5   # optional override, "provider:input:output" per $1M
 ```
+
+Cost pricing comes from a vendored copy of [LiteLLM's](https://github.com/BerriAI/litellm)
+community-maintained model cost map (MIT), stored at `snark/wit/pricing_data.json`
+and refreshable with `make update-pricing`. Tokens are priced per model, split
+into input vs output. `PROVIDER_TOKEN_COST` is an optional override (empty by
+default): `provider:input:output` per $1M (e.g. `claude:1:5`), or legacy
+`provider:blended` applied to both. It remains an **estimate** — blended
+cached/batch rates aren't applied, and streamed responses still log 0 tokens.
+Rates are cached for the process lifetime, so restart the app after
+`make update-pricing`. Responses logged before this feature carry no
+input/output split, so their estimated cost shows $0.
 
 On startup the stack runs `ensure_admin`, which creates/updates the superuser
 from those vars (a no-op when unset). Or create one manually:

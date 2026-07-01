@@ -111,18 +111,20 @@ class GeminiProvider(AIProvider):
             # `.text` raises when no usable candidate was returned (blocked output).
             raise ContentFilterError("Gemini returned no usable content (blocked)")
 
-        tokens_used = 0
+        input_tokens = 0
+        output_tokens = 0
         if response.usage_metadata:
-            tokens_used = (response.usage_metadata.prompt_token_count or 0) + (
-                response.usage_metadata.candidates_token_count or 0
-            )
+            input_tokens = response.usage_metadata.prompt_token_count or 0
+            output_tokens = response.usage_metadata.candidates_token_count or 0
 
         return AIResponse(
             text=text,
-            tokens_used=tokens_used,
+            tokens_used=input_tokens + output_tokens,
             model=self._model_name,
             provider=self.name,
             latency_ms=latency_ms,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
         )
 
     def generate_stream(
