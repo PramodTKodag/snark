@@ -125,6 +125,14 @@ class TestGenerationEventRecording:
         assert event.success is False
         assert event.fell_back is False
         assert event.provider_name == "groq"
+        # The failure reason is captured for querying (DB + future Loki).
+        assert event.error_code == "provider_error"
+        assert "down" in event.error_detail
+        from wit import stats
+
+        failures = stats.recent_failures()
+        assert failures[0]["error_code"] == "provider_error"
+        assert "down" in failures[0]["error_detail"]
 
     @patch("wit.services.ProviderRegistry")
     @patch("wit.services.cache")

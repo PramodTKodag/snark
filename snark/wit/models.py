@@ -63,6 +63,8 @@ class GenerationEvent(models.Model):
     fell_back = models.BooleanField(default=False)  # a non-primary provider served
     content_filtered = models.BooleanField(default=False)  # a content filter was hit
     streamed = models.BooleanField(default=False)
+    error_code = models.CharField(max_length=40, blank=True, default="")
+    error_detail = models.CharField(max_length=300, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:

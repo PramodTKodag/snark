@@ -172,6 +172,31 @@
       </table>
     </div>
     {% endif %}
+    {% if recent_failures %}
+    <div class="snark-panel" style="margin-top:20px;">
+      <h3>{% translate "Recent failures" %}</h3>
+      <table class="snark-table">
+        <thead>
+          <tr>
+            <th>{% translate "When" %}</th>
+            <th>{% translate "Provider" %}</th>
+            <th>{% translate "Reason" %}</th>
+            <th>{% translate "Detail" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in recent_failures %}
+          <tr>
+            <td>{{ row.created_at|date:"m/d H:i" }}</td>
+            <td>{{ row.provider_name }}{% if row.streamed %} <span class="snark-muted">(stream)</span>{% endif %}</td>
+            <td>{{ row.error_code|default:"error" }}</td>
+            <td class="snark-muted" style="font-size:11px;">{{ row.error_detail|truncatechars:80 }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
     {% else %}
     <div class="snark-panel">
       <p class="snark-empty">{% translate "No generation events recorded yet." %}</p>

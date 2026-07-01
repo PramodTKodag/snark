@@ -154,6 +154,17 @@ def provider_error_breakdown() -> list:
     return [{"provider": r["provider_name"], "errors": r["errors"]} for r in rows]
 
 
+def recent_failures(limit: int = 10) -> list:
+    """Most recent failed generation events (provider, why, when)."""
+    return list(
+        GenerationEvent.objects.filter(success=False)
+        .order_by("-created_at")
+        .values(
+            "provider_name", "error_code", "error_detail", "streamed", "created_at"
+        )[:limit]
+    )
+
+
 def model_usage(limit: int = 10) -> list:
     rows = (
         ResponseLog.objects.values("model_name")

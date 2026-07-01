@@ -169,6 +169,8 @@ class WitService:
             fell_back=False,
             content_filtered=content_filtered,
             streamed=True,
+            error_code=WitService._error_code(last_error),
+            error_detail=str(last_error)[:300] if last_error else "",
         )
         raise last_error or ProviderError("All AI providers failed to stream")
 
@@ -208,6 +210,8 @@ class WitService:
         fell_back,
         content_filtered,
         streamed,
+        error_code="",
+        error_detail="",
     ):
         """Record a reliability event; never let logging break generation."""
         try:
@@ -219,9 +223,20 @@ class WitService:
                 fell_back=fell_back,
                 content_filtered=content_filtered,
                 streamed=streamed,
+                error_code=error_code,
+                error_detail=error_detail,
             )
         except Exception:
             logger.exception("Failed to record GenerationEvent")
+
+    @staticmethod
+    def _error_code(exc) -> str:
+        """Short classification for a failed generation's last error."""
+        if isinstance(exc, ContentFilterError):
+            return "content_filter"
+        if isinstance(exc, ProviderError):
+            return "provider_error"
+        return "" if exc is None else "error"
 
     @staticmethod
     def _generate_with_fallback(
@@ -234,6 +249,7 @@ class WitService:
         """Try the default provider, then fall back to others on failure."""
         primary = ProviderRegistry.get()
         content_filtered = False
+        last_error: Exception | None = None
         try:
             resp = primary.generate(
                 system_prompt=system_prompt,
@@ -278,11 +294,13 @@ class WitService:
                     streamed=False,
                 )
                 return resp
-            except (ContentFilterError, ProviderError):
+            except (ContentFilterError, ProviderError) as exc:
+                last_error = exc
                 logger.warning(
                     "Softened retry failed on %s, trying fallbacks", primary.name
                 )
-        except ProviderError:
+        except ProviderError as exc:
+            last_error = exc
             logger.warning("Provider %s failed, trying fallbacks", primary.name)
 
         for fallback in ProviderRegistry.get_fallbacks(exclude=primary.name):
@@ -306,9 +324,11 @@ class WitService:
                 return resp
             except ContentFilterError as exc:
                 content_filtered = True
+                last_error = exc
                 logger.warning("Fallback %s also failed: %s", fallback.name, exc)
                 continue
             except ProviderError as exc:
+                last_error = exc
                 logger.warning("Fallback %s also failed: %s", fallback.name, exc)
                 continue
 
@@ -320,6 +340,8 @@ class WitService:
             fell_back=False,
             content_filtered=content_filtered,
             streamed=False,
+            error_code=WitService._error_code(last_error),
+            error_detail=str(last_error)[:300] if last_error else "",
         )
         raise ProviderError("All AI providers failed to generate a response")
 
