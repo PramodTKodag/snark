@@ -148,3 +148,10 @@ def test_stats_endpoint_still_works(api_client, persona_no):
     assert resp.status_code == 200
     assert resp.data["total_responses"] == 1
     assert resp.data["total_tokens"] == 3
+
+
+@pytest.mark.django_db
+def test_admin_index_requires_login(admin_urls, client):
+    resp = client.get("/admin/", SERVER_NAME="localhost")
+    assert resp.status_code == 302
+    assert "/login" in resp["Location"]

@@ -15,4 +15,5 @@ logger = logging.getLogger(__name__)
 def invalidate_persona_cache(sender, instance, **kwargs):
     """Drop the cached persona so edits take effect immediately."""
     cache.delete(persona_cache_key(instance.slug))
+    cache.delete("wit:personas:list")
     logger.debug("Invalidated persona cache for slug=%s", instance.slug)
