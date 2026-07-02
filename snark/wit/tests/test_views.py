@@ -121,6 +121,24 @@ class TestWitViews:
         assert resp.status_code == 400
         assert resp.json()["code"] == "invalid_request"
 
+    def test_worth_it_whitespace_q_rejected(self):
+        resp = self.client.get("/v1/wit/worth-it/", {"q": "   "})
+        assert resp.status_code == 400
+        body = resp.json()
+        assert body["code"] == "invalid_request"
+        assert "Query parameter 'q' is required" in body["error"]
+
+    @patch("wit.views.WitService.generate")
+    def test_worth_it_q_reaches_service(self, mock_gen):
+        mock_gen.return_value = {
+            "response": "VERDICT: YES",
+            "persona": "The Decision Oracle",
+            "cached": False,
+        }
+        resp = self.client.get("/v1/wit/worth-it/", {"q": "learning Rust"})
+        assert resp.status_code == 200
+        assert mock_gen.call_args.kwargs["user_input"] == "learning Rust"
+
     @patch("wit.views.WitService.generate")
     def test_eli5_endpoint(self, mock_gen):
         mock_gen.return_value = {

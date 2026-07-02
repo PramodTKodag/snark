@@ -119,6 +119,10 @@ class BaseWitView(APIView):
     permission_classes = []
     throttle_classes = [WitAnonThrottle]
     renderer_classes = [JSONRenderer, EventStreamRenderer]
+    # Endpoints that need a non-empty ?q= set require_q = True; q_hint
+    # optionally extends the 400 message with per-endpoint guidance.
+    require_q = False
+    q_hint = ""
 
     def handle_generate(self, request, slug, user_input=None):
         params = WitQuerySerializer(data=request.query_params)
@@ -132,6 +136,14 @@ class BaseWitView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         query = params.validated_data.get("q", "")
+        if self.require_q and not query:
+            message = "Query parameter 'q' is required"
+            if self.q_hint:
+                message += f" — {self.q_hint}"
+            return Response(
+                {"error": message, "code": "invalid_request"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         mood = params.validated_data.get("mood") or None
         length = params.validated_data.get("length") or None
         lang = params.validated_data.get("lang") or None
@@ -419,14 +431,10 @@ class RoastView(BaseWitView):
     responses={200: WitResponseSerializer},
 )
 class WorthItView(BaseWitView):
+    require_q = True
+
     def get(self, request):
-        q = request.query_params.get("q", "").strip()
-        if not q:
-            return Response(
-                {"error": "Query parameter 'q' is required", "code": "invalid_request"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        return self.handle_generate(request, "worth-it", user_input=q)
+        return self.handle_generate(request, "worth-it")
 
 
 @extend_schema(
