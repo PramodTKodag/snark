@@ -215,6 +215,14 @@ class TestWitViews:
         assert resp.status_code == 400
         assert hint in resp.json()["error"]
 
+    def test_missing_q_hint_full_message(self):
+        resp = self.client.get("/v1/wit/tech-battle/")
+        assert resp.status_code == 400
+        assert (
+            resp.json()["error"]
+            == "Query parameter 'q' is required — provide a matchup like 'coffee vs tea'"
+        )
+
 
 @pytest.mark.django_db
 class TestHealthViews:
