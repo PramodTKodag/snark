@@ -457,14 +457,10 @@ class WorthItView(BaseWitView):
     responses={200: WitResponseSerializer},
 )
 class ExplainLikeIm5View(BaseWitView):
+    require_q = True
+
     def get(self, request):
-        q = request.query_params.get("q", "").strip()
-        if not q:
-            return Response(
-                {"error": "Query parameter 'q' is required", "code": "invalid_request"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        return self.handle_generate(request, "explain-like-im-5", user_input=q)
+        return self.handle_generate(request, "explain-like-im-5")
 
 
 # ---------------------------------------------------------------------------
@@ -540,14 +536,10 @@ class FortuneCookieView(BaseWitView):
     responses={200: WitResponseSerializer},
 )
 class NameSuggestionView(BaseWitView):
+    require_q = True
+
     def get(self, request):
-        q = request.query_params.get("q", "").strip()
-        if not q:
-            return Response(
-                {"error": "Query parameter 'q' is required", "code": "invalid_request"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        return self.handle_generate(request, "name-suggestion", user_input=q)
+        return self.handle_generate(request, "name-suggestion")
 
 
 @extend_schema(
@@ -606,14 +598,10 @@ class MeetingExcuseView(BaseWitView):
     responses={200: WitResponseSerializer},
 )
 class JargonTranslatorView(BaseWitView):
+    require_q = True
+
     def get(self, request):
-        q = request.query_params.get("q", "").strip()
-        if not q:
-            return Response(
-                {"error": "Query parameter 'q' is required", "code": "invalid_request"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        return self.handle_generate(request, "jargon-translator", user_input=q)
+        return self.handle_generate(request, "jargon-translator")
 
 
 @extend_schema(
@@ -653,17 +641,11 @@ class IncidentPostmortemView(BaseWitView):
     responses={200: WitResponseSerializer},
 )
 class TechBattleView(BaseWitView):
+    require_q = True
+    q_hint = "provide a matchup like 'coffee vs tea'"
+
     def get(self, request):
-        q = request.query_params.get("q", "").strip()
-        if not q:
-            return Response(
-                {
-                    "error": "Query parameter 'q' is required — provide a matchup like 'coffee vs tea'",
-                    "code": "invalid_request",
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        return self.handle_generate(request, "tech-battle", user_input=q)
+        return self.handle_generate(request, "tech-battle")
 
 
 @extend_schema(
@@ -682,17 +664,11 @@ class TechBattleView(BaseWitView):
     responses={200: WitResponseSerializer},
 )
 class RateAnythingView(BaseWitView):
+    require_q = True
+    q_hint = "tell us what to rate"
+
     def get(self, request):
-        q = request.query_params.get("q", "").strip()
-        if not q:
-            return Response(
-                {
-                    "error": "Query parameter 'q' is required — tell us what to rate",
-                    "code": "invalid_request",
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        return self.handle_generate(request, "rate-anything", user_input=q)
+        return self.handle_generate(request, "rate-anything")
 
 
 @extend_schema(
@@ -727,17 +703,11 @@ class HoroscopeView(BaseWitView):
     responses={200: WitResponseSerializer},
 )
 class TldrView(BaseWitView):
+    require_q = True
+    q_hint = "describe what to summarize"
+
     def get(self, request):
-        q = request.query_params.get("q", "").strip()
-        if not q:
-            return Response(
-                {
-                    "error": "Query parameter 'q' is required — describe what to summarize",
-                    "code": "invalid_request",
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        return self.handle_generate(request, "tldr", user_input=q)
+        return self.handle_generate(request, "tldr")
 
 
 @extend_schema(

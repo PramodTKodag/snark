@@ -184,6 +184,37 @@ class TestWitViews:
         assert resp.status_code == 200
         assert mock_gen.call_args.kwargs["mood"] == "sarcastic"
 
+    REQUIRE_Q_ENDPOINTS = [
+        "/v1/wit/worth-it/",
+        "/v1/wit/explain-like-im-5/",
+        "/v1/wit/name-suggestion/",
+        "/v1/wit/jargon-translator/",
+        "/v1/wit/tech-battle/",
+        "/v1/wit/rate-anything/",
+        "/v1/wit/tldr/",
+    ]
+
+    @pytest.mark.parametrize("url", REQUIRE_Q_ENDPOINTS)
+    def test_missing_q_returns_400(self, url):
+        resp = self.client.get(url)
+        assert resp.status_code == 400
+        body = resp.json()
+        assert body["code"] == "invalid_request"
+        assert "Query parameter 'q' is required" in body["error"]
+
+    @pytest.mark.parametrize(
+        "url,hint",
+        [
+            ("/v1/wit/tech-battle/", "provide a matchup like 'coffee vs tea'"),
+            ("/v1/wit/rate-anything/", "tell us what to rate"),
+            ("/v1/wit/tldr/", "describe what to summarize"),
+        ],
+    )
+    def test_missing_q_hint_preserved(self, url, hint):
+        resp = self.client.get(url)
+        assert resp.status_code == 400
+        assert hint in resp.json()["error"]
+
 
 @pytest.mark.django_db
 class TestHealthViews:
