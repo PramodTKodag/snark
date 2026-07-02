@@ -1,5 +1,4 @@
 import logging
-import os
 import time
 
 from django.conf import settings
@@ -24,14 +23,17 @@ class ClaudeProvider(AIProvider):
             return
 
         self._anthropic = anthropic
-        env_var = getattr(settings, "ANTHROPIC_API_KEY_ENV_VAR", "ANTHROPIC_API_KEY")
-        self._api_key = api_key if api_key is not None else os.environ.get(env_var, "")
+        self._api_key = (
+            api_key
+            if api_key is not None
+            else getattr(settings, "ANTHROPIC_API_KEY", "")
+        )
         self._model = model or getattr(
             settings, "CLAUDE_MODEL", "claude-haiku-4-5-20251001"
         )
 
         if not self._api_key:
-            self._unavailable_reason = f"no API key (set {env_var})"
+            self._unavailable_reason = "no API key (set ANTHROPIC_API_KEY)"
             logger.warning("ClaudeProvider unavailable: %s", self._unavailable_reason)
             return
 

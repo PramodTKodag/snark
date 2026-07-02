@@ -1,5 +1,4 @@
 import logging
-import os
 import time
 
 from django.conf import settings
@@ -23,14 +22,15 @@ class GroqProvider(AIProvider):
             logger.warning("GroqProvider unavailable: %s", self._unavailable_reason)
             return
 
-        env_var = getattr(settings, "GROQ_API_KEY_ENV_VAR", "GROQ_API_KEY")
-        self._api_key = api_key if api_key is not None else os.environ.get(env_var, "")
+        self._api_key = (
+            api_key if api_key is not None else getattr(settings, "GROQ_API_KEY", "")
+        )
         self._model = model or getattr(
             settings, "GROQ_MODEL", "llama-3.3-70b-versatile"
         )
 
         if not self._api_key:
-            self._unavailable_reason = f"no API key (set {env_var})"
+            self._unavailable_reason = "no API key (set GROQ_API_KEY)"
             logger.warning("GroqProvider unavailable: %s", self._unavailable_reason)
             return
 
