@@ -229,12 +229,10 @@ GROQ_MODEL = config("GROQ_MODEL", default="llama-3.3-70b-versatile")
 GEMINI_MODEL = config("GEMINI_MODEL", default="gemini-2.0-flash")
 CLAUDE_MODEL = config("CLAUDE_MODEL", default="claude-haiku-4-5-20251001")
 
-# Per-provider API key env var names.
-GROQ_API_KEY_ENV_VAR = config("GROQ_API_KEY_ENV_VAR", default="GROQ_API_KEY")
-GEMINI_API_KEY_ENV_VAR = config("GEMINI_API_KEY_ENV_VAR", default="GEMINI_API_KEY")
-ANTHROPIC_API_KEY_ENV_VAR = config(
-    "ANTHROPIC_API_KEY_ENV_VAR", default="ANTHROPIC_API_KEY"
-)
+# Per-provider API keys (never logged; Django redacts *_KEY in error reports).
+GROQ_API_KEY = config("GROQ_API_KEY", default="")
+GEMINI_API_KEY = config("GEMINI_API_KEY", default="")
+ANTHROPIC_API_KEY = config("ANTHROPIC_API_KEY", default="")
 
 # drf-spectacular settings
 SPECTACULAR_SETTINGS = {

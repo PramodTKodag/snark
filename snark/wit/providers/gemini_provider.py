@@ -1,5 +1,4 @@
 import logging
-import os
 import time
 
 from django.conf import settings
@@ -32,14 +31,15 @@ class GeminiProvider(AIProvider):
             logger.warning("GeminiProvider unavailable: %s", self._unavailable_reason)
             return
 
-        env_var = getattr(settings, "GEMINI_API_KEY_ENV_VAR", "GEMINI_API_KEY")
-        self._api_key = api_key if api_key is not None else os.environ.get(env_var, "")
+        self._api_key = (
+            api_key if api_key is not None else getattr(settings, "GEMINI_API_KEY", "")
+        )
         self._model_name = model or getattr(
             settings, "GEMINI_MODEL", "gemini-2.0-flash"
         )
 
         if not self._api_key:
-            self._unavailable_reason = f"no API key (set {env_var})"
+            self._unavailable_reason = "no API key (set GEMINI_API_KEY)"
             logger.warning("GeminiProvider unavailable: %s", self._unavailable_reason)
             return
 

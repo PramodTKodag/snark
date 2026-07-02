@@ -143,3 +143,26 @@ class TestContentFilterDetection:
         provider = GeminiProvider(api_key="test-key", model="test-model")
         with pytest.raises(ContentFilterError):
             provider.generate("system", "user")
+
+
+class TestApiKeyFromSettings:
+    """Providers pick up their API key from Django settings when no explicit
+    api_key is passed (issue #59: the *_API_KEY_ENV_VAR indirection is gone)."""
+
+    def test_groq_key_from_settings(self, settings, monkeypatch):
+        monkeypatch.delenv("GROQ_API_KEY", raising=False)
+        settings.GROQ_API_KEY = "from-settings"
+        provider = GroqProvider()
+        assert provider.is_available() is True
+
+    def test_gemini_key_from_settings(self, settings, monkeypatch):
+        monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+        settings.GEMINI_API_KEY = "from-settings"
+        provider = GeminiProvider()
+        assert provider.is_available() is True
+
+    def test_claude_key_from_settings(self, settings, monkeypatch):
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        settings.ANTHROPIC_API_KEY = "from-settings"
+        provider = ClaudeProvider()
+        assert provider.is_available() is True
