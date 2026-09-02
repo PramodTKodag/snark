@@ -1,7 +1,7 @@
 from django.conf import settings
-from django.contrib import (  # noqa: F401  (ensures admin is imported)
-    admin as django_admin,
-)
+
+# Imported for its side effect: importing admin registers the admin site.
+from django.contrib import admin as django_admin  # noqa: F401
 from django.urls import include, path
 from drf_spectacular.views import (
     SpectacularAPIView,
