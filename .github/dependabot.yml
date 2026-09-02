@@ -1,6 +1,10 @@
 version: 2
 updates:
-  # Python dependencies (Poetry reads pyproject.toml + poetry.lock)
+  # Python dependencies (Poetry reads pyproject.toml + poetry.lock).
+  # Minor/patch bumps are grouped into a single PR per dependency type so they
+  # share one poetry.lock change instead of stacking into conflicting PRs.
+  # Major bumps are left ungrouped (one PR each) so a breaking upgrade stays
+  # isolated and does not block the rest of the batch.
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
@@ -8,19 +12,38 @@ updates:
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
+    groups:
+      python-production:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+      python-development:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
 
-  # GitHub Actions used in workflows
+  # GitHub Actions used in workflows — bundled into one PR.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
     labels:
       - "dependencies"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
 
-  # Base images in the Dockerfile
+  # Base images in the Dockerfile — bundled into one PR.
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
       interval: "weekly"
     labels:
       - "dependencies"
+    groups:
+      docker:
+        patterns:
+          - "*"
