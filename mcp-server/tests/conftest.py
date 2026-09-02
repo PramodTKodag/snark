@@ -24,6 +24,10 @@ class FakeClient:
         self.calls.append(("roast_github", username, mood))
         return self._resp("The Friendly Roaster", f"github roast of {username}")
 
+    async def roast_url(self, url, mood=None, length=None, lang=None):
+        self.calls.append(("roast_url", url, mood))
+        return self._resp("The Friendly Roaster", f"url roast of {url}")
+
     async def worth_it(self, thing, mood=None, length=None, lang=None):
         self.calls.append(("worth_it", thing, mood))
         return self._resp("The Decision Oracle", f"VERDICT: NO ({thing})")
@@ -44,6 +48,9 @@ class ErrorClient:
         raise SnarkAPIError("Snark API error (503): AI service temporarily unavailable")
 
     async def roast_github(self, *a, **k):
+        raise SnarkAPIError("Snark API error (503): AI service temporarily unavailable")
+
+    async def roast_url(self, *a, **k):
         raise SnarkAPIError("Snark API error (503): AI service temporarily unavailable")
 
 

@@ -20,6 +20,10 @@ class WitResponseSerializer(serializers.Serializer):
     cached = serializers.BooleanField()
 
 
+class RoastUrlQuerySerializer(serializers.Serializer):
+    url = serializers.URLField(max_length=2000)
+
+
 class WitQuerySerializer(serializers.Serializer):
     q = serializers.CharField(
         required=False, allow_blank=True, max_length=500, default=""

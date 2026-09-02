@@ -91,6 +91,12 @@ class SnarkClient:
             {"mood": mood, "length": length, "lang": lang},
         )
 
+    async def roast_url(self, url, mood=None, length=None, lang=None) -> dict:
+        return await self._get(
+            "roast-url/",
+            {"url": url, "mood": mood, "length": length, "lang": lang},
+        )
+
     async def worth_it(self, thing, mood=None, length=None, lang=None) -> dict:
         return await self._get(
             "worth-it/", {"q": thing, "mood": mood, "length": length, "lang": lang}

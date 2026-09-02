@@ -65,6 +65,16 @@ async def test_roast_github_uses_hyphenated_path():
 
 
 @respx.mock
+async def test_roast_url_passes_url_as_query_param():
+    route = respx.get(f"{BASE}/v1/wit/roast-url/").mock(
+        return_value=httpx.Response(200, json={"response": "r", "persona": "p", "cached": False})
+    )
+    await _client().roast_url("https://example.com/x")
+    assert route.called
+    assert "url=https" in str(route.calls.last.request.url)
+
+
+@respx.mock
 async def test_worth_it_maps_thing_to_q():
     route = respx.get(f"{BASE}/v1/wit/worth-it/").mock(
         return_value=httpx.Response(
