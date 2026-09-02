@@ -68,6 +68,9 @@ curl http://localhost:8100/v1/wit/say-no/
 # Get roasted
 curl http://localhost:8100/v1/wit/roast/dave/
 
+# Roast any public URL
+curl "http://localhost:8100/v1/wit/roast-url/?url=https://example.com"
+
 # Explain quantum physics like you're 5
 curl "http://localhost:8100/v1/wit/explain-like-im-5/?q=quantum+physics"
 
@@ -145,6 +148,7 @@ All endpoints are `GET` requests under `/v1/wit/`. Most accept optional `?q=`, `
 | `/v1/wit/moods/` | List accepted `mood` values |
 | `/v1/wit/random/` | Surprise me — random persona |
 | `/v1/wit/roast-github/<username>/` | Roast a public GitHub profile |
+| `/v1/wit/roast-url/?url=` | Roast any public URL (SSRF-safe fetch + Open Graph) |
 | `/v1/wit/stats/` | Usage stats (totals and top personas) |
 
 ### Mood Parameter
@@ -243,13 +247,13 @@ snark personas
 snark stats
 ```
 
-The first positional argument is a persona slug (or one of `personas`, `stats`, `random`, `roast <name>`, `github <username>`); the second is optional context. It points at `http://localhost:8100` by default — override with `--api` or the `SNARK_API_URL` environment variable.
+The first positional argument is a persona slug (or one of `personas`, `stats`, `random`, `roast <name>`, `github <username>`, `url <url>`); the second is optional context. It points at `http://localhost:8100` by default — override with `--api` or the `SNARK_API_URL` environment variable.
 
 ## Use it from AI agents (MCP)
 
 Snark ships an [MCP](https://modelcontextprotocol.io) server (`snark-mcp`, in [`mcp-server/`](mcp-server/)) so AI assistants — **Claude Code, Claude Desktop, Cursor**, and other MCP clients — can call snark as native tools. It's a thin client over this same REST API: point it at a running instance with `SNARK_API_URL`.
 
-It exposes a curated set of tools — `snark_roast`, `snark_roast_github`, `snark_hot_take`, `snark_commit_message`, `snark_reply`, `snark_worth_it`, `snark_wit` (any persona by slug), and `snark_list_personas` — so you can just ask *"roast the GitHub user torvalds"* in your assistant and it calls the right one.
+It exposes a curated set of tools — `snark_roast`, `snark_roast_github`, `snark_roast_url`, `snark_hot_take`, `snark_commit_message`, `snark_reply`, `snark_worth_it`, `snark_wit` (any persona by slug), and `snark_list_personas` — so you can just ask *"roast the GitHub user torvalds"* in your assistant and it calls the right one.
 
 Quickest path with **Claude Code** (per-project, private to you):
 

@@ -571,6 +571,31 @@ ROAST_GITHUB_DESC = (
     "}\n```"
 )
 
+ROAST_URL_DESC = (
+    "Roasts any public web page by its URL. Give it a `url` query parameter and "
+    "it fetches the page, extracts its Open Graph / metadata (title, "
+    "description, site name), and serves a playful, clever roast of whatever it "
+    "is — a personal site, an npm package, a Product Hunt launch, a blog post.\n\n"
+    "The fetch is hardened against Server-Side Request Forgery: only http/https "
+    "on ports 80/443 are allowed, every resolved address is screened against "
+    "private and internal ranges, the connection is pinned to the screened IP, "
+    "redirects are re-validated per hop, and the response is size- and "
+    "time-capped.\n\n"
+    "Returns **400** if the URL is missing, malformed, or resolves to a "
+    "non-public address, and **502** if the page cannot be retrieved.\n\n"
+    "**When to use:** You want to roast a link someone shared.\n\n"
+    "**Example request:**\n"
+    "```\nGET /v1/wit/roast-url/?url=https://example.com\n"
+    "GET /v1/wit/roast-url/?url=https://news.ycombinator.com&mood=dramatic\n```\n\n"
+    "**Example response:**\n"
+    "```json\n{\n"
+    '  "response": "A landing page that still says \'coming soon\' in 2026. '
+    'Bold.",\n'
+    '  "persona": "The Friendly Roaster",\n'
+    '  "cached": false\n'
+    "}\n```"
+)
+
 REPLY_DESC = (
     "Given a social media post, returns ONE short, sarcastic reply to it — "
     "built for bots that clap back in the comments. POST the post text as "

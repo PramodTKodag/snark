@@ -79,6 +79,21 @@ async def snark_roast_github(username: str, mood: Optional[Mood] = None) -> dict
 
 
 @mcp.tool
+async def snark_roast_url(url: str, mood: Optional[Mood] = None) -> dict:
+    """Roast any public web page by its URL.
+
+    Use when the user shares a link (personal site, npm package, Product Hunt
+    launch, blog post) and wants a playful roast of it. ``url`` is a public
+    http/https URL; the page's Open Graph / metadata is used as the roast
+    material. Returns the roast text and persona.
+    """
+    try:
+        return _format(await _client.roast_url(url, mood=mood))
+    except SnarkAPIError as exc:
+        raise ToolError(str(exc))
+
+
+@mcp.tool
 async def snark_hot_take(topic: str, mood: Optional[Mood] = None) -> dict:
     """Generate a spicy, debate-worthy hot take on a topic.
 

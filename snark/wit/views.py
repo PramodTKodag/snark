@@ -2,8 +2,10 @@ import json
 import logging
 import re
 import threading
+from urllib.parse import urlsplit, urlunsplit
 
 from django.conf import settings
+from django.core.cache import cache
 from django.http import StreamingHttpResponse
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema
@@ -43,6 +45,7 @@ from .docs import (
     REPLY_DESC,
     ROAST_DESC,
     ROAST_GITHUB_DESC,
+    ROAST_URL_DESC,
     SAY_NO_DESC,
     SOCIAL_BIO_DESC,
     STANDUP_UPDATE_DESC,
@@ -58,6 +61,8 @@ from .github import (
     fetch_profile,
 )
 from .models import Persona
+from .og_extract import build_roast_context as build_url_roast_context
+from .og_extract import extract_summary
 from .providers.base import ProviderError
 from .serializers import (
     BatchRequestSerializer,
@@ -66,12 +71,14 @@ from .serializers import (
     MoodsResponseSerializer,
     PersonaListItemSerializer,
     ReplyRequestSerializer,
+    RoastUrlQuerySerializer,
     StatsResponseSerializer,
     WitQuerySerializer,
     WitResponseSerializer,
 )
 from .services import PersonaNotFoundError, WitService
 from .stats import usage_stats
+from .url_fetch import UnsafeUrlError, UrlUnreachableError, fetch_url
 
 logger = logging.getLogger(__name__)
 
@@ -867,6 +874,73 @@ class RoastGithubView(BaseWitView):
             )
         return self.handle_generate(
             request, "roast", user_input=build_roast_context(profile)
+        )
+
+
+@extend_schema(
+    tags=["Wit"],
+    summary="Roast any public URL",
+    description=ROAST_URL_DESC,
+    parameters=[
+        OpenApiParameter("url", str, OpenApiParameter.QUERY, required=True),
+        _MOOD_PARAM,
+        _LENGTH_PARAM,
+        _LANG_PARAM,
+        _STREAM_PARAM,
+    ],
+    responses={200: WitResponseSerializer},
+)
+class RoastUrlView(BaseWitView):
+    # Cache the derived roast context per URL so repeat roasts skip the fetch.
+    URL_CONTEXT_CACHE_TTL = 15 * 60
+
+    def get(self, request):
+        params = RoastUrlQuerySerializer(data=request.query_params)
+        if not params.is_valid():
+            return Response(
+                {
+                    "error": "A valid 'url' query parameter is required",
+                    "code": "invalid_request",
+                    "details": params.errors,
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        url = params.validated_data["url"]
+        try:
+            context = self._roast_context_for(url)
+        except UnsafeUrlError as exc:
+            logger.warning("Blocked unsafe roast-url target: %s", exc)
+            return Response(
+                {"error": "That URL cannot be fetched", "code": "unsafe_url"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except UrlUnreachableError as exc:
+            logger.warning("roast-url fetch failed: %s", exc)
+            return Response(
+                {"error": "Could not reach that URL", "code": "url_unreachable"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        return self.handle_generate(request, "roast", user_input=context)
+
+    @classmethod
+    def _roast_context_for(cls, url):
+        """Fetch + extract a URL into a roast context, cached by normalized URL."""
+        normalized = cls._normalize_url(url)
+        cache_key = f"roasturl:context:{normalized}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+        page = fetch_url(normalized)
+        summary = extract_summary(page.html)
+        context = build_url_roast_context(summary, page.final_url)
+        cache.set(cache_key, context, cls.URL_CONTEXT_CACHE_TTL)
+        return context
+
+    @staticmethod
+    def _normalize_url(url):
+        parts = urlsplit(url)
+        return urlunsplit(
+            (parts.scheme.lower(), parts.netloc.lower(), parts.path, parts.query, "")
         )
 
 

@@ -110,6 +110,11 @@ def run(args: argparse.Namespace) -> None:
         if not text:
             sys.exit("usage: snark github <username>")
         path = f"roast-github/{urllib.parse.quote(text)}/"
+    elif endpoint == "url":
+        if not text:
+            sys.exit("usage: snark url <url>")
+        path = "roast-url/"
+        params["url"] = text
     elif endpoint == "random":
         path = "random/"
         params["q"] = text
@@ -134,6 +139,7 @@ def build_parser() -> argparse.ArgumentParser:
             "  snark roast Dave --mood spicy\n"
             '  snark hot-take "remote work" --stream\n'
             "  snark github torvalds\n"
+            "  snark url https://example.com\n"
             "  snark personas\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -142,7 +148,8 @@ def build_parser() -> argparse.ArgumentParser:
         "endpoint",
         help=(
             "persona slug (e.g. hot-take, commit-message), or one of: "
-            "personas, stats, random, roast <name>, github <username>"
+            "personas, stats, random, roast <name>, github <username>, "
+            "url <url>"
         ),
     )
     parser.add_argument(

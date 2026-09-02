@@ -49,6 +49,18 @@ def test_github_uses_path():
     assert "/v1/wit/roast-github/torvalds/" in g.call_args.args[0]
 
 
+def test_url_passes_url_as_query_param():
+    with patch.object(
+        cli,
+        "_get_json",
+        return_value={"response": "r", "persona": "P", "cached": False},
+    ) as g:
+        cli.run(_args("url", "https://example.com/x"))
+    called = g.call_args.args[0]
+    assert "/v1/wit/roast-url/" in called
+    assert "url=https" in called
+
+
 def test_personas_lists(capsys):
     rows = [{"slug": "roast", "name": "The Friendly Roaster", "tone": "playful"}]
     with patch.object(cli, "_get_json", return_value=rows):
