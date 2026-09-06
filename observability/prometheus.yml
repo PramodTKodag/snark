@@ -1,0 +1,11 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: snark
+    metrics_path: /v1/wit/metrics/
+    authorization:
+      type: Bearer
+      credentials_file: /tmp/metrics-token
+    static_configs:
+      - targets: ["snark:8094"]

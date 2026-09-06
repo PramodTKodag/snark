@@ -30,6 +30,32 @@
           "expr": "sum(count_over_time({app=\"snark\"} | json | event=\"generation_event\" | success=\"false\" [5m]))"
         }
       ]
+    },
+    {
+      "id": 3,
+      "title": "Error rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(snark_generations_total{success=\"false\"}[5m])) / sum(rate(snark_generations_total[5m]))"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Fallback rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(snark_generations_total{fell_back=\"true\"}[5m])) / sum(rate(snark_generations_total[5m]))"
+        }
+      ]
     }
   ]
 }

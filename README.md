@@ -438,6 +438,37 @@ to 7 days in Loki.
 example; to use a different backend (ELK, Datadog, CloudWatch, Grafana Cloud,
 …), skip the profile and point your own collector at snark's stdout.
 
+#### Metrics (`/metrics`, opt-in)
+
+For rate math (error rate, fallback rate) snark can expose a Prometheus
+`/metrics` endpoint with a `snark_generations_total` counter
+(labels: `provider`, `success`, `fell_back`, `content_filtered`).
+
+`/metrics` is served on the **same public port as the API**, so it is
+**bearer-token authenticated and OFF by default**:
+
+- Set `METRICS_AUTH_TOKEN` to a long random value to enable it. Empty (the
+  default) means the endpoint returns `404` — it does not exist.
+- Callers must send `Authorization: Bearer <token>`; a missing or wrong token
+  gets `404` (the endpoint's existence is not revealed). The comparison is
+  constant-time.
+- The bundled `observability` profile passes the same `METRICS_AUTH_TOKEN`
+  through to Prometheus automatically, adds a Prometheus datasource, and shows
+  Error rate / Fallback rate panels on the dashboard.
+
+> **Why a token and not an IP allowlist?** On a directly-published port an
+> IP allowlist is unreliable — Docker NAT rewrites external source IPs to the
+> private bridge gateway, and `X-Forwarded-For` is spoofable. **Network
+> isolation** (firewall / Kubernetes NetworkPolicy so only your scraper can
+> reach the app) remains the recommended primary control; the token is the
+> app-layer guard on top of it.
+
+Under gunicorn (multi-worker) the profile sets `PROMETHEUS_MULTIPROC_DIR` on a
+tmpfs and wires the `child_exit` hook so scraped values aggregate across
+workers. Note: with worker recycling (`--max-requests`) per-process metric files
+accumulate in that dir; being tmpfs-backed it clears on container restart —
+raise `--max-requests` or add a periodic sweep only if it ever grows.
+
 ## Admin panel (optional)
 
 Snark ships an opt-in Django admin for managing personas and browsing usage —
