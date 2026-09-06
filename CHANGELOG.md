@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `GET /v1/wit/roast-url/` — roast any public URL, backed by an SSRF-hardened fetcher and Open Graph/metadata extraction (with matching CLI `url` command and `snark_roast_url` MCP tool)
+- Opt-in observability stack as a Docker Compose profile (`--profile observability`): Grafana Loki + Grafana Alloy (scrapes container stdout) + Grafana with a pre-provisioned datasource and reliability dashboard — snark stays backend-neutral (standard JSON stdout), so any other aggregator can be used instead
+- Structured `generation_event` log emitted at the reliability choke point, for log-based dashboards
+- Token-authenticated Prometheus `/metrics` endpoint with a `snark_generations_total` reliability counter, plus a Prometheus service and error/fallback-rate panels in the bundled stack
+- Configurable model tuning via environment: `GROQ_REASONING_EFFORT`, per-length token ceilings (`LENGTH_TOKENS_SHORT`/`_MEDIUM`/`_LONG`), and a global `PERSONA_MAX_TOKENS_FLOOR`
+
+### Changed
+
+- Default Groq model is now `openai/gpt-oss-20b` (the previous default was retired by Groq); the provider sends `reasoning_effort` for reasoning models and transparently retries without it for models that don't support it
+
+### Security
+
+- `/metrics` is bearer-token authenticated and disabled unless `METRICS_AUTH_TOKEN` is set; requests without a valid token get a `404`. An application-layer IP allowlist was deliberately avoided because Docker's published-port NAT makes source IPs unreliable for access control
+
 ## [0.3.0] - 2026-07-02
 
 ### Added
