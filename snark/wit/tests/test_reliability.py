@@ -269,3 +269,45 @@ class TestReliabilityStats:
         rows = stats.provider_error_breakdown()
         assert rows[0] == {"provider": "groq", "errors": 2}
         assert {"provider": "gemini", "errors": 1} in rows
+
+
+@pytest.mark.django_db
+class TestGenerationEventLogging:
+    @patch("wit.services.ProviderRegistry")
+    @patch("wit.services.cache")
+    def test_success_emits_generation_event_log(
+        self, mock_cache, mock_registry, persona_no, caplog
+    ):
+        mock_cache.get.return_value = None
+        primary = MagicMock()
+        primary.name = "groq"
+        primary.generate.return_value = _response("groq", "m1")
+        mock_registry.get.return_value = primary
+
+        with caplog.at_level("INFO", logger="wit.services"):
+            WitService.generate("say-no")
+
+        rec = next(r for r in caplog.records if r.getMessage() == "generation_event")
+        assert rec.event == "generation_event"
+        assert rec.provider == "groq"
+        assert rec.model == "m1"
+        assert rec.success is True
+        assert rec.fell_back is False
+        assert rec.content_filtered is False
+        assert rec.streamed is False
+        assert rec.persona == "say-no"
+        assert rec.error_code == ""
+
+    def test_record_event_swallows_logging_errors(self, persona_no):
+        # Logging must never break generation.
+        with patch("wit.services.logger.info", side_effect=RuntimeError("boom")):
+            WitService._record_event(
+                persona_no,
+                "groq",
+                "m1",
+                success=True,
+                fell_back=False,
+                content_filtered=False,
+                streamed=False,
+            )
+        # If we get here without raising, the swallow works.

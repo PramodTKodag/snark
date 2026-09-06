@@ -271,6 +271,24 @@ class WitService:
         except Exception:
             logger.exception("Failed to record GenerationEvent")
 
+        try:
+            logger.info(
+                "generation_event",
+                extra={
+                    "event": "generation_event",
+                    "persona": getattr(persona, "slug", "") or "",
+                    "provider": provider_name,
+                    "model": model_name or "",
+                    "success": success,
+                    "fell_back": fell_back,
+                    "content_filtered": content_filtered,
+                    "streamed": streamed,
+                    "error_code": error_code,
+                },
+            )
+        except Exception:
+            logger.exception("Failed to emit generation_event log")
+
     @staticmethod
     def _error_code(exc) -> str:
         """Short classification for a failed generation's last error."""
