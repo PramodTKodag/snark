@@ -33,6 +33,7 @@ google-genai = "^2.10.0"
 groq = "^1.7.0"
 python-decouple = "^3.8"
 django-cors-headers = "^4.4.0"
+django-prometheus = "^2.5.0"
 
 [tool.poetry.scripts]
 snark = "snark.cli:main"

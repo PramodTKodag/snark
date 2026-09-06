@@ -8,6 +8,7 @@ volumes:
   snark-redis-data:
   snark-loki-data:
   snark-grafana-data:
+  snark-prometheus-data:
 
 services:
   snark-postgres:
@@ -89,14 +90,21 @@ services:
       snark-redis-cache:
         condition: service_healthy
     command: >
-      sh -c "cd snark &&
+      sh -c "export PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus &&
+             mkdir -p /tmp/prometheus &&
+             cd snark &&
              python manage.py migrate &&
              python manage.py ensure_admin &&
              python manage.py prune_logs &&
              python manage.py seed_personas &&
              gunicorn base.wsgi:application --bind 0.0.0.0:$$INTERNAL_PORT
+             --config /app/observability/gunicorn.conf.py
              --workers $${GUNICORN_WORKERS:-2} --threads $${GUNICORN_THREADS:-8}
              --max-requests 1000 --max-requests-jitter 100"
+    volumes:
+      - ./observability/gunicorn.conf.py:/app/observability/gunicorn.conf.py:ro
+    tmpfs:
+      - /tmp/prometheus
     profiles:
       - prod
     networks:
@@ -145,6 +153,27 @@ services:
       - snark-grafana-data:/var/lib/grafana
     depends_on:
       - loki
+    restart: unless-stopped
+    profiles:
+      - observability
+    networks:
+      - snark
+
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    container_name: snark-prometheus
+    environment:
+      METRICS_AUTH_TOKEN: ${METRICS_AUTH_TOKEN:-}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >
+        printf '%s' "$${METRICS_AUTH_TOKEN}" > /tmp/metrics-token &&
+        exec /bin/prometheus --config.file=/etc/prometheus/prometheus.yml
+        --storage.tsdb.retention.time=15d
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - snark-prometheus-data:/prometheus
     restart: unless-stopped
     profiles:
       - observability

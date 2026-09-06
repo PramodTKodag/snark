@@ -5,7 +5,7 @@ import time
 
 from django.core.cache import cache
 
-from . import pricing, privacy
+from . import metrics, pricing, privacy
 from .constants import ALLOWED_LENGTHS, ALLOWED_MOODS, LENGTH_MAX_TOKENS
 from .models import GenerationEvent, Persona, ResponseLog
 from .providers import ProviderRegistry
@@ -288,6 +288,16 @@ class WitService:
             )
         except Exception:
             logger.exception("Failed to emit generation_event log")
+
+        try:
+            metrics.GENERATIONS_TOTAL.labels(
+                provider=provider_name,
+                success=str(success).lower(),
+                fell_back=str(fell_back).lower(),
+                content_filtered=str(content_filtered).lower(),
+            ).inc()
+        except Exception:
+            logger.exception("Failed to increment generation counter")
 
     @staticmethod
     def _error_code(exc) -> str:
