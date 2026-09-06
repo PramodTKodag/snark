@@ -311,3 +311,28 @@ class TestGenerationEventLogging:
                 streamed=False,
             )
         # If we get here without raising, the swallow works.
+
+
+@pytest.mark.django_db
+class TestGenerationCounters:
+    def test_record_event_increments_counter(self, persona_no):
+        from wit.metrics import GENERATIONS_TOTAL
+
+        labels = {
+            "provider": "groq",
+            "success": "true",
+            "fell_back": "false",
+            "content_filtered": "false",
+        }
+        before = GENERATIONS_TOTAL.labels(**labels)._value.get()
+        WitService._record_event(
+            persona_no,
+            "groq",
+            "m1",
+            success=True,
+            fell_back=False,
+            content_filtered=False,
+            streamed=False,
+        )
+        after = GENERATIONS_TOTAL.labels(**labels)._value.get()
+        assert after == before + 1
