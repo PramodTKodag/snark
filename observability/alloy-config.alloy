@@ -1,0 +1,31 @@
+// Alloy pipeline: discover Docker containers, scrape their stdout/stderr,
+// and ship to Loki. Only low-cardinality labels (app, env, container) are
+// attached; high-cardinality fields stay in the JSON log line for LogQL
+// filtering (e.g. | json | provider="groq").
+
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "containers" {
+  targets = discovery.docker.containers.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+}
+
+loki.source.docker "containers" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.containers.output
+  labels     = { app = "snark", env = "docker" }
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
