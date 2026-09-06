@@ -27,6 +27,7 @@ Snark is an open-source, self-hostable REST API that serves AI-generated humor �
 - **Multi-provider** — supports Groq (free), Gemini, and Claude with automatic fallback
 - **Rate limited** — 50 requests/hour per IP
 - **One-command stack** — `docker compose up` brings the API, PostgreSQL, and Redis together; nothing external to provision
+- **Observability-ready** — structured JSON logs to any aggregator, plus an opt-in Loki + Alloy + Grafana + Prometheus stack (`--profile observability`) with a token-guarded `/metrics` endpoint
 - **Self-hosted** — run the whole thing on your own infrastructure
 
 ## Quick Start
