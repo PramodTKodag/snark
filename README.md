@@ -325,6 +325,10 @@ All configuration is via environment variables. See `.env.example` for the full 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `AI_DEFAULT_PROVIDER` | `groq` | AI provider: `groq`, `gemini`, or `claude` |
+| `GROQ_MODEL` / `GEMINI_MODEL` / `CLAUDE_MODEL` | see `.env.example` | Per-provider model id. Groq rotates models — on a `404 model does not exist`, pick a current one from `console.groq.com/docs/models` |
+| `GROQ_REASONING_EFFORT` | `low` | Effort for Groq reasoning models (gpt-oss): `low`/`medium`/`high`. Non-reasoning models reject it → provider retries without it. Empty = never send |
+| `LENGTH_TOKENS_SHORT` / `_MEDIUM` / `_LONG` | `60` / `150` / `320` | Output-token ceiling per `?length=` value |
+| `PERSONA_MAX_TOKENS_FLOOR` | `0` | Global floor on every generation's token budget (`0`=off). Raise to give reasoning models room without editing each persona |
 | `GROQ_API_KEY` | — | Groq API key (free at console.groq.com) |
 | `GEMINI_API_KEY` | — | Google Gemini API key (optional) |
 | `ANTHROPIC_API_KEY` | — | Anthropic API key (optional, paid) |

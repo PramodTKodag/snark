@@ -166,3 +166,57 @@ class TestApiKeyFromSettings:
         settings.ANTHROPIC_API_KEY = "from-settings"
         provider = ClaudeProvider()
         assert provider.is_available() is True
+
+
+def _groq_ok_response(text="hi"):
+    resp = MagicMock()
+    choice = MagicMock(finish_reason="stop")
+    choice.message.content = text
+    resp.choices = [choice]
+    resp.usage = MagicMock(prompt_tokens=1, completion_tokens=1)
+    return resp
+
+
+class TestGroqReasoningEffort:
+    @patch("groq.Groq")
+    def test_reasoning_effort_sent_when_set(self, mock_groq_cls):
+        mock_client = MagicMock()
+        mock_groq_cls.return_value = mock_client
+        mock_client.chat.completions.create.return_value = _groq_ok_response()
+
+        provider = GroqProvider(
+            api_key="k", model="openai/gpt-oss-20b", reasoning_effort="low"
+        )
+        provider.generate("system", "user")
+
+        kwargs = mock_client.chat.completions.create.call_args.kwargs
+        assert kwargs.get("reasoning_effort") == "low"
+
+    @patch("groq.Groq")
+    def test_reasoning_effort_omitted_when_empty(self, mock_groq_cls):
+        mock_client = MagicMock()
+        mock_groq_cls.return_value = mock_client
+        mock_client.chat.completions.create.return_value = _groq_ok_response()
+
+        provider = GroqProvider(api_key="k", model="allam-2-7b", reasoning_effort="")
+        provider.generate("system", "user")
+
+        kwargs = mock_client.chat.completions.create.call_args.kwargs
+        assert "reasoning_effort" not in kwargs
+
+    @patch("groq.Groq")
+    def test_retries_without_reasoning_effort_when_unsupported(self, mock_groq_cls):
+        mock_client = MagicMock()
+        mock_groq_cls.return_value = mock_client
+        mock_client.chat.completions.create.side_effect = [
+            Exception("`reasoning_effort` is not supported with this model"),
+            _groq_ok_response("recovered"),
+        ]
+
+        provider = GroqProvider(api_key="k", model="allam-2-7b", reasoning_effort="low")
+        out = provider.generate("system", "user")
+
+        assert out.text == "recovered"
+        assert mock_client.chat.completions.create.call_count == 2
+        second_kwargs = mock_client.chat.completions.create.call_args_list[1].kwargs
+        assert "reasoning_effort" not in second_kwargs

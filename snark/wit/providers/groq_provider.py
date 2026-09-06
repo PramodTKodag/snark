@@ -11,7 +11,12 @@ logger = logging.getLogger(__name__)
 class GroqProvider(AIProvider):
     """Groq chat-completions provider (OpenAI-compatible API)."""
 
-    def __init__(self, api_key: str | None = None, model: str | None = None):
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model: str | None = None,
+        reasoning_effort: str | None = None,
+    ):
         self._client = None
         self._unavailable_reason: str | None = None
 
@@ -25,8 +30,11 @@ class GroqProvider(AIProvider):
         self._api_key = (
             api_key if api_key is not None else getattr(settings, "GROQ_API_KEY", "")
         )
-        self._model = model or getattr(
-            settings, "GROQ_MODEL", "llama-3.3-70b-versatile"
+        self._model = model or getattr(settings, "GROQ_MODEL", "openai/gpt-oss-20b")
+        self._reasoning_effort = (
+            reasoning_effort
+            if reasoning_effort is not None
+            else getattr(settings, "GROQ_REASONING_EFFORT", "")
         )
 
         if not self._api_key:
@@ -56,20 +64,44 @@ class GroqProvider(AIProvider):
                 f"Groq provider unavailable: {self._unavailable_reason}"
             )
 
+        request_kwargs = {
+            "model": self._model,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        }
+        if self._reasoning_effort:
+            request_kwargs["reasoning_effort"] = self._reasoning_effort
+
         start = time.monotonic()
         try:
-            response = self._client.chat.completions.create(
-                model=self._model,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-            )
+            response = self._client.chat.completions.create(**request_kwargs)
         except Exception as exc:
-            logger.error("Groq API error [%s]: %s", type(exc).__name__, exc)
-            raise ProviderError(f"Groq API call failed: {exc}") from exc
+            # Non-reasoning models reject reasoning_effort; drop it and retry once
+            # so the same config works across the whole model lineup.
+            if "reasoning_effort" in request_kwargs and "reasoning_effort" in str(exc):
+                logger.warning(
+                    "Model %s does not support reasoning_effort; retrying without it",
+                    self._model,
+                )
+                request_kwargs.pop("reasoning_effort")
+                try:
+                    response = self._client.chat.completions.create(**request_kwargs)
+                except Exception as retry_exc:
+                    logger.error(
+                        "Groq API error [%s]: %s",
+                        type(retry_exc).__name__,
+                        retry_exc,
+                    )
+                    raise ProviderError(
+                        f"Groq API call failed: {retry_exc}"
+                    ) from retry_exc
+            else:
+                logger.error("Groq API error [%s]: %s", type(exc).__name__, exc)
+                raise ProviderError(f"Groq API call failed: {exc}") from exc
 
         choice = response.choices[0] if response.choices else None
         if (

@@ -231,9 +231,30 @@ AI_PROVIDER_FALLBACK_ORDER = config(
 AI_DEFAULT_MAX_TOKENS = config("AI_DEFAULT_MAX_TOKENS", default=300, cast=int)
 
 # Per-provider model identifiers (real model ids; override via env per deployment).
-GROQ_MODEL = config("GROQ_MODEL", default="llama-3.3-70b-versatile")
+GROQ_MODEL = config("GROQ_MODEL", default="openai/gpt-oss-20b")
 GEMINI_MODEL = config("GEMINI_MODEL", default="gemini-2.0-flash")
 CLAUDE_MODEL = config("CLAUDE_MODEL", default="claude-haiku-4-5-20251001")
+
+# Reasoning effort for Groq reasoning models (e.g. gpt-oss): "low"/"medium"/
+# "high". Reasoning models spend part of the token budget "thinking"; "low"
+# keeps that cheap so the answer fits the persona budget. Non-reasoning models
+# reject this param — the provider detects that and retries without it. Set to
+# empty to never send it.
+GROQ_REASONING_EFFORT = config("GROQ_REASONING_EFFORT", default="low")
+
+# Per-length output-token ceilings, applied when a request passes ?length=.
+# Tunable per deployment (e.g. raise them for reasoning models). No length
+# param falls back to the persona's own max_tokens.
+LENGTH_MAX_TOKENS = {
+    "short": config("LENGTH_TOKENS_SHORT", default=60, cast=int),
+    "medium": config("LENGTH_TOKENS_MEDIUM", default=150, cast=int),
+    "long": config("LENGTH_TOKENS_LONG", default=320, cast=int),
+}
+
+# Global floor for the effective output-token budget of every generation. 0
+# (default) is off. Raise it to give reasoning models room without editing each
+# persona (e.g. set 256 so gpt-oss has budget for thinking + answer).
+PERSONA_MAX_TOKENS_FLOOR = config("PERSONA_MAX_TOKENS_FLOOR", default=0, cast=int)
 
 # Per-provider API keys (never logged; Django redacts *_KEY in error reports).
 GROQ_API_KEY = config("GROQ_API_KEY", default="")
