@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "drf_spectacular_sidecar",
     "corsheaders",
+    "django_prometheus",
 ]
 
 MIDDLEWARE = [
@@ -136,6 +137,11 @@ USE_TZ = True
 # plain is the human-readable default for local/dev.
 LOG_FORMAT = config("LOG_FORMAT", default="plain")
 LOG_LEVEL = config("LOG_LEVEL", default="INFO")
+
+# Prometheus /metrics is served on the same public port as the API, so it is
+# bearer-token authenticated and OFF by default. An empty token means the
+# endpoint returns 404 (does not exist). Set a long random value to enable it.
+METRICS_AUTH_TOKEN = config("METRICS_AUTH_TOKEN", default="")
 
 LOGGING = {
     "version": 1,
