@@ -6,6 +6,8 @@ networks:
 volumes:
   snark-postgres-data:
   snark-redis-data:
+  snark-loki-data:
+  snark-grafana-data:
 
 services:
   snark-postgres:
@@ -97,5 +99,54 @@ services:
              --max-requests 1000 --max-requests-jitter 100"
     profiles:
       - prod
+    networks:
+      - snark
+
+  loki:
+    image: grafana/loki:3.2.0
+    container_name: snark-loki
+    command: -config.file=/etc/loki/config.yaml
+    volumes:
+      - ./observability/loki-config.yaml:/etc/loki/config.yaml:ro
+      - snark-loki-data:/loki
+    restart: unless-stopped
+    profiles:
+      - observability
+    networks:
+      - snark
+
+  alloy:
+    image: grafana/alloy:v1.5.0
+    container_name: snark-alloy
+    command: run --server.http.listen-addr=0.0.0.0:12345 /etc/alloy/config.alloy
+    volumes:
+      - ./observability/alloy-config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - loki
+    restart: unless-stopped
+    profiles:
+      - observability
+    networks:
+      - snark
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: snark-grafana
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - snark-grafana-data:/var/lib/grafana
+    depends_on:
+      - loki
+    restart: unless-stopped
+    profiles:
+      - observability
     networks:
       - snark
