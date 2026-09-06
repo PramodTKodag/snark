@@ -23,11 +23,7 @@ ALLOWED_MOODS = frozenset(
 # when omitted, each persona's own max_tokens is used unchanged.
 ALLOWED_LENGTHS = frozenset({"short", "medium", "long"})
 
-LENGTH_MAX_TOKENS = {
-    "short": 60,
-    "medium": 150,
-    "long": 320,
-}
+# Per-length token ceilings live in settings.LENGTH_MAX_TOKENS (env-configurable).
 
 # Upper bound on the free-text `lang` query param to keep prompts bounded.
 MAX_LANG_LENGTH = 30

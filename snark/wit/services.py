@@ -3,10 +3,11 @@ import logging
 import secrets
 import time
 
+from django.conf import settings
 from django.core.cache import cache
 
 from . import metrics, pricing, privacy
-from .constants import ALLOWED_LENGTHS, ALLOWED_MOODS, LENGTH_MAX_TOKENS
+from .constants import ALLOWED_LENGTHS, ALLOWED_MOODS
 from .models import GenerationEvent, Persona, ResponseLog
 from .providers import ProviderRegistry
 from .providers.base import ContentFilterError, ProviderError, StreamUsage
@@ -49,7 +50,7 @@ class WitService:
 
         guard, user_prompt = WitService._spotlight(user_input)
         system_prompt = WitService._build_prompt(persona, mood, length, lang, guard)
-        max_tokens = LENGTH_MAX_TOKENS.get(length, persona.max_tokens)
+        max_tokens = WitService._resolve_max_tokens(length, persona)
 
         ai_response = WitService._generate_with_fallback(
             system_prompt=system_prompt,
@@ -122,7 +123,7 @@ class WitService:
 
         guard, user_prompt = WitService._spotlight(user_input)
         system_prompt = WitService._build_prompt(persona, mood, length, lang, guard)
-        max_tokens = LENGTH_MAX_TOKENS.get(length, persona.max_tokens)
+        max_tokens = WitService._resolve_max_tokens(length, persona)
 
         primary = ProviderRegistry.get()
         providers = [primary] + ProviderRegistry.get_fallbacks(exclude=primary.name)
@@ -241,6 +242,13 @@ class WitService:
             )
         except Exception:
             logger.exception("Failed to log streamed response")
+
+    @staticmethod
+    def _resolve_max_tokens(length, persona) -> int:
+        """Effective output-token budget: the length cap (or persona default),
+        raised to PERSONA_MAX_TOKENS_FLOOR so reasoning models have room."""
+        base = settings.LENGTH_MAX_TOKENS.get(length, persona.max_tokens)
+        return max(base, settings.PERSONA_MAX_TOKENS_FLOOR)
 
     @staticmethod
     def _record_event(
