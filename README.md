@@ -342,6 +342,10 @@ All configuration is via environment variables. See `.env.example` for the full 
 | `RESPONSE_LOG_RETENTION_DAYS` | `30` | Days to keep raw request logs (`ResponseLog`); `0` keeps them forever |
 | `GENERATION_EVENT_RETENTION_DAYS` | `90` | Days to keep reliability events (`GenerationEvent`); `0` keeps them forever |
 | `LOG_INPUT_MODE` | `redacted` | How to store user input: `redacted` (strip structured PII + truncate), `none` (don't store), or `raw` (verbatim) |
+| `LOG_FORMAT` | `plain` | Log output: `plain` (human-readable) or `json` (one JSON line per record for aggregators) |
+| `LOG_LEVEL` | `INFO` | Root log level: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
+| `GRAFANA_PORT` | `3000` | Host port for Grafana (only used by the `observability` compose profile) |
+| `GRAFANA_ADMIN_USER` / `GRAFANA_ADMIN_PASSWORD` | `admin` / `admin` | Grafana admin credentials (only used by the `observability` compose profile) |
 
 > **Behind a reverse proxy?** Set `USE_PROXY_SSL_HEADER=True` and `NUM_PROXIES=<n>` so HTTPS detection and per-IP rate limiting work correctly. Leave both unset for direct connections.
 
@@ -404,6 +408,35 @@ LOG_LEVEL=INFO      # DEBUG | INFO | WARNING | ERROR
 Ship these JSON lines to [Loki](https://grafana.com/oss/loki/)/Grafana (or any log
 aggregator) for dashboards and alerting on token usage, cost, latency, and error
 rates — no extra dependency, just structured stdout.
+
+Every reliability event also emits a structured `generation_event` line at the
+single choke point (`provider`, `model`, `success`, `fell_back`,
+`content_filtered`, `streamed`, `error_code`, `persona`) — the stream that powers
+the reliability dashboards below.
+
+#### Bundled stack (opt-in)
+
+A ready-to-run [Grafana Loki](https://grafana.com/oss/loki/) +
+[Grafana Alloy](https://grafana.com/docs/alloy/) + Grafana stack ships as an
+**opt-in compose profile that is off by default**. Alloy scrapes container stdout
+into Loki; Grafana comes with a provisioned Loki datasource and a starter
+"snark Reliability" dashboard.
+
+```bash
+# start snark + the observability stack together (set LOG_FORMAT=json first)
+docker compose --profile dev --profile observability up -d      # or --profile prod
+# then open Grafana at http://localhost:3000 (default admin / admin)
+```
+
+Config lives under `observability/` (Loki, Alloy, and Grafana provisioning), so
+it is easy to inspect, tweak, or extract. Tune `GRAFANA_PORT`,
+`GRAFANA_ADMIN_USER`, and `GRAFANA_ADMIN_PASSWORD` in `.env`. Retention defaults
+to 7 days in Loki.
+
+**Backend-neutral by design.** snark itself depends on neither Loki nor Grafana
+— it only emits standard JSON logs on stdout. The bundled stack is one reference
+example; to use a different backend (ELK, Datadog, CloudWatch, Grafana Cloud,
+…), skip the profile and point your own collector at snark's stdout.
 
 ## Admin panel (optional)
 

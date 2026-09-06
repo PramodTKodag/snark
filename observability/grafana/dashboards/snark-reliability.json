@@ -1,0 +1,35 @@
+{
+  "title": "snark Reliability",
+  "uid": "snark-reliability",
+  "schemaVersion": 39,
+  "editable": true,
+  "time": { "from": "now-6h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Generation events / 5m",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(count_over_time({app=\"snark\"} | json | event=\"generation_event\" [5m]))"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Failed generations / 5m",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(count_over_time({app=\"snark\"} | json | event=\"generation_event\" | success=\"false\" [5m]))"
+        }
+      ]
+    }
+  ]
+}
