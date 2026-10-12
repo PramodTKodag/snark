@@ -58,8 +58,7 @@ class ClaudeProvider(AIProvider):
         return ProviderError(f"{self.name} {action}: {summary}")
 
     def _is_content_filter(self, exc: Exception) -> bool:
-        message = str(exc).lower()
-        return "content filtering" in message or "blocked" in message
+        return "content filtering" in str(exc).lower()
 
     def is_available(self) -> bool:
         return self._client is not None

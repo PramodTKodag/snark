@@ -190,6 +190,26 @@ class TestClaudeProvider:
         with pytest.raises(ContentFilterError):
             provider.generate("system", "user")
 
+    @patch("anthropic.Anthropic")
+    def test_unrelated_bad_request_is_a_provider_error_not_a_content_filter(
+        self, mock_anthropic_cls
+    ):
+        import anthropic
+
+        mock_client = MagicMock()
+        mock_anthropic_cls.return_value = mock_client
+        mock_client.messages.create.side_effect = anthropic.BadRequestError(
+            message="Request blocked: prompt is too long",
+            response=MagicMock(status_code=400, headers={}),
+            body=None,
+        )
+
+        provider = ClaudeProvider(claude_spec(), "test-key")
+        with pytest.raises(ProviderError) as excinfo:
+            provider.generate("system", "user")
+
+        assert not isinstance(excinfo.value, ContentFilterError)
+
 
 class TestGeminiProvider:
     @patch("google.genai.Client")
