@@ -72,8 +72,7 @@ def use_providers_file(tmp_path, settings):
 @pytest.fixture
 def claude_priced_providers(use_providers_file):
     """A providers file where `claude` costs $1 in / $3 out per 1M tokens."""
-    use_providers_file(
-        """\
+    use_providers_file("""\
 default: claude
 fallback: [claude]
 providers:
@@ -82,8 +81,7 @@ providers:
     url: https://llm.example.test/v1
     model: test-model
     price: [1, 3]
-"""
-    )
+""")
 
 
 @pytest.fixture
