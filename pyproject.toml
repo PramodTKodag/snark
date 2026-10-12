@@ -40,7 +40,7 @@ django-prometheus = "^2.5.0"
 snark = "snark.cli:main"
 
 [tool.poetry.group.dev.dependencies]
-black = "^24.0.0"
+black = "^26.3.1"
 isort = "^9.0.1"
 flake8 = "^7.0.0"
 pytest = "^9.1.1"
