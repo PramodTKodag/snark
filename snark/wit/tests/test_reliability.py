@@ -161,7 +161,7 @@ class TestGenerationEventRecording:
         mock_cache.get.return_value = None
         provider = MagicMock()
         provider.name = "groq"
-        provider._model = "test-model"
+        provider.model = "test-model"
         provider.generate_stream.return_value = iter(["No", " thanks"])
         mock_registry.get.return_value = provider
         mock_registry.get_fallbacks.return_value = []
@@ -186,7 +186,7 @@ class TestGenerationEventRecording:
         primary.generate_stream.side_effect = ProviderError("down")
         fallback = MagicMock()
         fallback.name = "gemini"
-        fallback._model = "test-model"
+        fallback.model = "test-model"
         fallback.generate_stream.return_value = iter(["No", " thanks"])
         mock_registry.get.return_value = primary
         mock_registry.get_fallbacks.return_value = [fallback]

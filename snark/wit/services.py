@@ -169,11 +169,7 @@ class WitService:
             WitService._log_stream(
                 persona, user_input, text, provider, latency_ms, usage
             )
-            model_name = (
-                getattr(provider, "_model", None)
-                or getattr(provider, "_model_name", None)
-                or provider.name
-            )
+            model_name = provider.model
             WitService._record_event(
                 persona,
                 provider.name,
@@ -203,11 +199,7 @@ class WitService:
     def _log_stream(persona, user_input, text, provider, latency_ms, usage=None):
         if not text:
             return
-        model_name = (
-            getattr(provider, "_model", None)
-            or getattr(provider, "_model_name", None)
-            or provider.name
-        )
+        model_name = provider.model
         input_tokens = usage.input_tokens if usage else 0
         output_tokens = usage.output_tokens if usage else 0
         try:

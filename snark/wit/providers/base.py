@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
+
+MAX_ERROR_SUMMARY_LENGTH = 300
 
 
 @dataclass
@@ -39,10 +41,47 @@ class ContentFilterError(ProviderError):
     """Raised when a provider blocks output due to content filtering."""
 
 
+def _scrub(text: str, secrets: Iterable[str]) -> str:
+    for secret in secrets:
+        if secret:
+            text = text.replace(secret, "***")
+    return text
+
+
+def safe_error_summary(exc: BaseException, secrets: Iterable[str]) -> str:
+    """Describe a provider failure without leaking credentials.
+
+    Auth failures (HTTP 401/403) reduce to the exception class and status, since
+    their bodies can echo the credential. Anything else keeps the message, and
+    the direct cause's class and message when there is one (the SDK wraps DNS,
+    refused-connection and TLS errors), with every secret value replaced by
+    ``***``, truncated to fit ``error_detail``.
+    """
+    summary = type(exc).__name__
+    status = getattr(exc, "status_code", None)
+    if isinstance(status, int):
+        summary += f" (status {status})"
+        if status in (401, 403):
+            return summary
+    message = _scrub(str(exc), secrets)
+    if message:
+        summary += f": {message}"
+    cause = exc.__cause__
+    if cause is not None:
+        cause_message = _scrub(str(cause), secrets)
+        summary += f" (caused by {type(cause).__name__}"
+        summary += f": {cause_message})" if cause_message else ")"
+    return summary[:MAX_ERROR_SUMMARY_LENGTH]
+
+
 class AIProvider(ABC):
     @property
     @abstractmethod
     def name(self) -> str: ...
+
+    @property
+    @abstractmethod
+    def model(self) -> str: ...
 
     @abstractmethod
     def generate(
