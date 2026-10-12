@@ -56,6 +56,37 @@ def _reset_provider_registry():
 
 
 @pytest.fixture
+def use_providers_file(tmp_path, settings):
+    """Point the registry at a providers file with the given YAML text."""
+    from wit.providers import ProviderRegistry
+
+    def _use(text: str) -> None:
+        path = tmp_path / "providers.yaml"
+        path.write_text(text)
+        settings.AI_PROVIDERS_FILE = str(path)
+        ProviderRegistry.reset()
+
+    return _use
+
+
+@pytest.fixture
+def claude_priced_providers(use_providers_file):
+    """A providers file where `claude` costs $1 in / $3 out per 1M tokens."""
+    use_providers_file(
+        """\
+default: claude
+fallback: [claude]
+providers:
+  claude:
+    type: openai_compatible
+    url: https://llm.example.test/v1
+    model: test-model
+    price: [1, 3]
+"""
+    )
+
+
+@pytest.fixture
 def api_client():
     return APIClient()
 

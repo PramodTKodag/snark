@@ -295,14 +295,6 @@ ADMIN_USERNAME = config("ADMIN_USERNAME", default="")
 ADMIN_EMAIL = config("ADMIN_EMAIL", default="")
 ADMIN_PASSWORD = config("ADMIN_PASSWORD", default="")
 
-# Optional per-provider price override for the admin dashboard cost estimate.
-# Default pricing comes from the vendored LiteLLM map (wit/pricing_data.json);
-# this only overrides it. Comma-separated, per provider, in USD per 1M tokens:
-#   "provider:input:output"  (e.g. claude:1:5)  or legacy "provider:blended".
-# Parsed in wit/pricing.py. Leave empty to rely entirely on the vendored map.
-# Estimate only: list prices, cached/batch discounts not modeled.
-PROVIDER_TOKEN_COST = config("PROVIDER_TOKEN_COST", default="")
-
 # Data retention & privacy (privacy-forward defaults; pruned on startup + cron).
 # Days to keep raw request logs / reliability events (0 = keep forever).
 RESPONSE_LOG_RETENTION_DAYS = config(

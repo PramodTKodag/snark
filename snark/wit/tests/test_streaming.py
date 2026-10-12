@@ -243,9 +243,8 @@ class TestServiceStreaming:
     @patch("wit.services.ProviderRegistry")
     @patch("wit.services.cache")
     def test_stream_emits_generation_log(
-        self, mock_cache, mock_registry, persona_no, settings, caplog
+        self, mock_cache, mock_registry, persona_no, claude_priced_providers, caplog
     ):
-        settings.PROVIDER_TOKEN_COST = "claude:1:3"
         mock_cache.get.return_value = None
         provider = MagicMock()
         provider.name = "claude"

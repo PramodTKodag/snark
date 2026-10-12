@@ -280,9 +280,9 @@ def system_health() -> dict:
 def cost_estimate() -> dict:
     """Estimated USD spend from split input/output tokens x per-model rates.
 
-    Rates are resolved per (provider, model) group from the vendored pricing map
-    (with the PROVIDER_TOKEN_COST env override), then rolled up to per-provider
-    totals for display. Streamed and non-streamed responses both log split
+    Rates are resolved per (provider, model) group from the provider's `price`/
+    `free` in the providers file, else the vendored pricing map, then rolled up
+    to per-provider totals for display. Streamed and non-streamed responses both log split
     token usage, so both contribute to the estimate.
     """
     rows = ResponseLog.objects.values("provider_name", "model_name").annotate(
