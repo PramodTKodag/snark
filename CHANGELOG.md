@@ -18,14 +18,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Generic `openai_compatible` provider type for any OpenAI-compatible endpoint (Groq, OpenRouter, vLLM, a local Ollama), with per-provider `extra_body`
 - Ollama support: a keyless `ollama` entry in the shipped providers file and a quick-start guide in the README
 - Per-provider `price` and `free` settings for the dashboard cost estimate
+- `host.docker.internal` is mapped to the host on both app services in `docker-compose.yml`, so containers can reach a local Ollama
 
 ### Changed
 
 - Default Groq model is now `openai/gpt-oss-20b` (the previous default was retired by Groq)
 - A provider's name is its key in `config/providers.yaml` (logs, stats, and fallback use it)
 - `reasoning_effort` is now set through the provider's `extra_body`; there is no automatic retry without it when a model rejects it
-- An empty model reply now triggers fallback to the next provider instead of being returned
+- An empty reply from an `openai_compatible` provider now triggers fallback to the next provider instead of being returned
 - Claude: a bad-request error is now treated as a content filter only when it mentions content filtering; the previous match on "blocked" could turn an unrelated 400 (for example an oversized prompt) into a content-filter fallback
+- Startup now fails with an error when `config/providers.yaml` (or the file named by `AI_PROVIDERS_FILE`) is invalid
 
 ### Removed
 

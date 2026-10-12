@@ -79,7 +79,7 @@ If you are deploying Snark:
   that hold keys and never holds a key itself; a provider with a `key` must use an
   `https` URL. Treat the file like any other config: review changes to it, and keep
   it writable only by operators. Requests to `openai_compatible` providers do not
-  follow redirects and ignore proxy, CA-bundle and `OPENAI_*` environment variables
+  follow redirects and ignore proxy, CA-bundle and `OPENAI_*` environment variables.
 - Use strong, unique values for `SECRET_KEY`
 - Set `DEBUG=False` in production
 - Run behind a reverse proxy (nginx, Caddy) with TLS

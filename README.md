@@ -291,7 +291,7 @@ snark/
 
 ### AI providers
 
-Providers live in [`config/providers.yaml`](config/providers.yaml), not in environment variables. The file ships in the Docker image; edit it and restart to switch providers.
+Providers live in [`config/providers.yaml`](config/providers.yaml), not in environment variables. The file ships in the Docker image. With `--profile dev` the repo is mounted, so editing it and restarting switches providers. With `--profile prod` you must rebuild the image or mount your own file (see below).
 
 ```yaml
 default: groq                  # answers requests
@@ -329,13 +329,13 @@ providers:
 | `fallback` | top level | Ordered list of providers to try when the default fails. Optional; no repeats |
 | `type` | every provider | `openai_compatible`, `gemini`, or `claude` |
 | `model` | every provider | Model id (up to 100 characters) |
-| `key` | every provider | Env var **name** (e.g. `GROQ_API_KEY`), never the key itself. Required for `gemini` and `claude`; omit it for a keyless local server |
-| `url` | `openai_compatible` | Base URL of the OpenAI-compatible API. Must be `https` when the provider has a `key` |
+| `key` | every provider | Env var **name** in uppercase (`^[A-Z][A-Z0-9_]*$`, e.g. `GROQ_API_KEY`), never the key itself. Required for `gemini` and `claude`; omit it for a keyless local server |
+| `url` | `openai_compatible` | Required. Base URL of the OpenAI-compatible API, with no credentials, query or fragment. Must be `https` when the provider has a `key` |
 | `extra_body` | `openai_compatible` | Extra JSON fields sent verbatim in every request, e.g. `reasoning_effort`. Cannot set `model`, `messages`, `stream`, `stream_options`, `max_tokens`, `temperature`, or `n` |
 | `price` | every provider | `[input, output]` USD per 1M tokens for the dashboard cost estimate |
 | `free` | keyless providers | `true` makes the cost estimate 0. Cannot be combined with `key` or `price` |
 
-The file is validated at startup; a bad file stops the app with an error naming the provider and field.
+Provider names (the keys under `providers`) must match `^[a-z][a-z0-9_-]{0,49}$`. The file is validated at startup; a bad file stops the app with an error naming the provider and field.
 
 **Use your own file.** Point `AI_PROVIDERS_FILE` at it (default: `config/providers.yaml`). In Docker, mount it into the container and set the variable in `.env`:
 
@@ -351,19 +351,19 @@ services:
 AI_PROVIDERS_FILE=/app/config/my-providers.yaml
 ```
 
-**Fallback.** A request goes to `default`. If it fails (error, rate limit, or an empty model reply), Snark tries each provider in `fallback` in order, skipping the one that already failed and any provider without an API key. On a content-filter refusal Snark first retries the same provider once with a softened prompt. If every provider fails the request returns an error.
+**Fallback.** A request goes to `default`. If it fails (error, rate limit, or an empty reply from an `openai_compatible` provider), Snark tries each provider in `fallback` in order, skipping the one that already failed and any provider without an API key. For non-streaming requests, a content-filter refusal first retries the same provider once with a softened prompt. Streaming requests skip that retry and move straight to the next provider, and only if nothing has been sent yet; a stream that fails after output has started does not fall back. If every provider fails the request returns an error.
 
 **Network.** Requests to `openai_compatible` providers go straight to the configured `url`: redirects are not followed, and the `OPENAI_*` variables (including `OPENAI_CUSTOM_HEADERS`) and the proxy and CA-bundle variables (`HTTPS_PROXY`, `SSL_CERT_FILE`) are ignored. A backend behind a private CA or a forward proxy is not supported.
 
 **`reasoning_effort`.** Reasoning models (e.g. gpt-oss) spend part of the token budget thinking. Set the effort through `extra_body`, as in the Groq entry above. Snark does not retry without it: if your model rejects `reasoning_effort`, remove it from `extra_body`.
 
-**Pricing.** Cost estimates use `price` or `free` when set, otherwise the vendored [LiteLLM](https://github.com/BerriAI/litellm) price map, looked up by the model id or `<provider name>/<model>`. A provider that is not named `groq`, `gemini`, or `claude`, or a model missing from that map, shows cost 0 until you set `price` or `free`.
+**Pricing.** Cost estimates use `price` or `free` when set, otherwise the vendored [LiteLLM](https://github.com/BerriAI/litellm) price map, searched for the model id, then `<provider name>/<model>` (for example `groq/openai/gpt-oss-20b`). A miss shows cost 0 until you set `price` or `free`.
 
 #### Run with Ollama
 
 1. Install [Ollama](https://ollama.com) on the host and pull a model: `ollama pull gemma3:27b`.
 2. In `config/providers.yaml` (or your own file), set `default: ollama`. The `ollama` entry is already defined.
-3. On Linux, make Ollama listen beyond localhost so the container can reach it: `OLLAMA_HOST=0.0.0.0 ollama serve`.
+3. On Linux, make Ollama listen on the Docker bridge address (usually `172.17.0.1`, see `ip addr show docker0`) so the container can reach it: `OLLAMA_HOST=172.17.0.1 ollama serve`. Avoid `0.0.0.0`: Ollama has no authentication, so that exposes model inference, pull and delete to anything that can reach the machine. If you must use it, firewall port 11434 to the Docker subnet. Docker Desktop on macOS and Windows needs none of this.
 4. Start the stack: `docker compose --profile dev up --build`. The compose file already maps `host.docker.internal` to the host.
 
 Ollama needs no API key. To use a different model, change `model` to one you have pulled.
@@ -397,7 +397,7 @@ make shell
 
 ## Configuration
 
-All configuration is via environment variables. See `.env.example` for the full list.
+Most configuration is via environment variables; AI providers are configured in `config/providers.yaml`. See `.env.example` for the full list.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
