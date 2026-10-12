@@ -4,6 +4,7 @@ import pytest
 from wit.providers.config import (
     ProviderConfigError,
     ProviderType,
+    _build_extra_body,
     load_providers_config,
 )
 
@@ -195,6 +196,8 @@ class TestKeyAndUrl:
             "https://user@h/v1",
             "https://h/v1?token=x",
             "https://h/v1#frag",
+            "https://h/v1?",
+            "https://h/v1#",
             "ftp://h/v1",
             "https:///v1",
             "https://h:99999999/v1",
@@ -244,6 +247,7 @@ class TestPriceAndFree:
             "[1, 2, 3]",
             "5",
             "['a', 1]",
+            "[1" + "0" * 400 + ", 1]",
         ],
     )
     def test_bad_price(self, tmp_path, price):
@@ -291,6 +295,23 @@ class TestExtraBody:
     def test_cycle_rejected(self, tmp_path):
         load_error(tmp_path, single() + "    extra_body: &loop\n      self: *loop\n")
 
+    def test_layered_aliases_are_rejected_promptly(self, tmp_path):
+        layers = "".join(
+            f"      l{i}: &a{i} [*a{i - 1}, *a{i - 1}, *a{i - 1}]\n"
+            for i in range(1, 12)
+        )
+        text = single() + "    extra_body:\n      l0: &a0 [1]\n" + layers
+
+        assert "not valid YAML" in load_error(tmp_path, text)
+
+    def test_alias_is_rejected_even_when_harmless(self, tmp_path):
+        load_error(tmp_path, single() + "    extra_body:\n      a: &x 1\n      b: *x\n")
+
+    def test_deeply_nested_extra_body_is_a_config_error(self, tmp_path):
+        text = single() + "    extra_body:\n      deep: " + "[" * 5000 + "]" * 5000
+
+        assert "nested too deeply" in load_error(tmp_path, text)
+
     def test_list_cycle_rejected(self, tmp_path):
         load_error(tmp_path, single() + "    extra_body:\n      x: &loop [*loop]\n")
 
@@ -300,10 +321,18 @@ class TestExtraBody:
     def test_non_mapping_rejected(self, tmp_path):
         load_error(tmp_path, single() + "    extra_body: [a]\n")
 
-    def test_valid_extra_body_is_deep_copied_from_parse(self, tmp_path):
+    def test_valid_extra_body_is_loaded(self, tmp_path):
         text = single() + "    extra_body:\n      options:\n        think: false\n"
         config = load_providers_config(write_config(tmp_path, text))
         assert config.providers["p"].extra_body == {"options": {"think": False}}
+
+    def test_extra_body_is_deep_copied_from_the_parsed_tree(self):
+        raw = {"options": {"think": False}}
+
+        built = _build_extra_body(raw, lambda field, problem: ValueError(problem))
+
+        assert built == raw
+        assert built is not raw and built["options"] is not raw["options"]
 
     def test_extra_body_defaults_to_empty(self, tmp_path):
         config = load_providers_config(write_config(tmp_path, single()))

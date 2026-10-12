@@ -1,4 +1,4 @@
-"""Strict loader for the AI providers file (``config/providers.yaml``).
+"""Strict loader for the AI providers YAML file.
 
 The file is operator-trusted but parsed as hostile input: safe YAML only,
 duplicate keys rejected at every depth, strict types, and errors that name the
@@ -39,6 +39,10 @@ class ProviderType(StrEnum):
     CLAUDE = "claude"
 
 
+class ProviderConfigError(ImproperlyConfigured):
+    """The providers file is missing or invalid. Messages never echo values."""
+
+
 @dataclass(frozen=True)
 class ProviderSpec:
     name: str
@@ -47,8 +51,19 @@ class ProviderSpec:
     key_env: str | None = None
     url: str | None = None
     extra_body: Mapping[str, Any] | None = None
-    price: tuple[float, float] | None = None
+    price: tuple[float, float] | None = None  # (input, output) USD per 1M tokens
     free: bool = False
+
+    def __post_init__(self):
+        """Cross-field rules every spec must satisfy, however it was built."""
+        if self.type is not ProviderType.OPENAI_COMPATIBLE:
+            return
+        if not self.url:
+            raise ProviderConfigError(f"provider '{self.name}': 'url' is required")
+        if self.key_env is not None and urlsplit(self.url).scheme != "https":
+            raise ProviderConfigError(
+                f"provider '{self.name}': 'url' must use https when the provider has a key"
+            )
 
 
 @dataclass(frozen=True)
@@ -58,12 +73,20 @@ class ProvidersConfig:
     providers: Mapping[str, ProviderSpec]
 
 
-class ProviderConfigError(ImproperlyConfigured):
-    """The providers file is missing or invalid. Messages never echo values."""
-
-
 class _UniqueKeyLoader(yaml.SafeLoader):
-    """SafeLoader that rejects duplicate mapping keys at every depth."""
+    """SafeLoader that rejects duplicate mapping keys and YAML aliases.
+
+    Aliases are refused because the file needs none and shared anchors expand
+    geometrically when the tree is walked.
+    """
+
+    def compose_node(self, parent, index):
+        if self.check_event(yaml.AliasEvent):
+            event = self.peek_event()
+            raise yaml.composer.ComposerError(
+                None, None, "aliases are not supported", event.start_mark
+            )
+        return super().compose_node(parent, index)
 
 
 def _construct_unique_mapping(loader, node, deep=False):
@@ -185,9 +208,7 @@ def _build_spec(name: str, raw: Any) -> ProviderSpec:
     free = raw.get("free", False)
     if not isinstance(free, bool):
         raise fail("free", "must be true or false")
-    price = _build_price(raw["price"]) if "price" in raw else None
-    if "price" in raw and price is None:
-        raise fail("price", "must be [input, output] finite non-negative numbers")
+    price = _build_price(raw["price"], fail) if "price" in raw else None
     if free and key_env is not None:
         raise fail("free", "is only for keyless providers")
     if free and price is not None:
@@ -196,7 +217,7 @@ def _build_spec(name: str, raw: Any) -> ProviderSpec:
     url = None
     extra_body = None
     if openai_compatible:
-        url = _validate_url(raw.get("url"), has_key=key_env is not None, fail=fail)
+        url = _validate_url(raw.get("url"), fail)
         extra_body = _build_extra_body(raw.get("extra_body", {}), fail)
 
     return ProviderSpec(
@@ -211,20 +232,25 @@ def _build_spec(name: str, raw: Any) -> ProviderSpec:
     )
 
 
-def _build_price(raw: Any) -> tuple[float, float] | None:
+def _build_price(raw: Any, fail) -> tuple[float, float]:
+    problem = "must be [input, output] finite non-negative numbers"
     if not isinstance(raw, list) or len(raw) != 2:
-        return None
+        raise fail("price", problem)
     values = []
     for value in raw:
         if isinstance(value, bool) or not isinstance(value, (int, float)):
-            return None
-        if not math.isfinite(value) or value < 0:
-            return None
-        values.append(float(value))
+            raise fail("price", problem)
+        try:
+            number = float(value)
+        except OverflowError:
+            raise fail("price", problem) from None
+        if not math.isfinite(number) or number < 0:
+            raise fail("price", problem)
+        values.append(number)
     return values[0], values[1]
 
 
-def _validate_url(raw: Any, has_key: bool, fail) -> str:
+def _validate_url(raw: Any, fail) -> str:
     if not isinstance(raw, str) or not raw:
         raise fail("url", "is required")
     try:
@@ -236,10 +262,8 @@ def _validate_url(raw: Any, has_key: bool, fail) -> str:
         raise fail("url", "must be an http(s) URL with a host")
     if parts.username is not None or parts.password is not None:
         raise fail("url", "must not contain credentials")
-    if parts.query or parts.fragment:
+    if parts.query or parts.fragment or "?" in raw or "#" in raw:
         raise fail("url", "must not contain a query or fragment")
-    if has_key and parts.scheme != "https":
-        raise fail("url", "must use https when the provider has a key")
     return raw
 
 
@@ -256,8 +280,8 @@ def _build_extra_body(raw: Any, fail) -> Mapping[str, Any]:
 def _is_json_clean(value: Any) -> bool:
     """True for str/int/finite float/bool/None and lists/str-key dicts of those.
 
-    Recursive (cyclic) YAML anchors never get here: the loader's deep
-    construction already rejects them as invalid YAML.
+    Aliases (and so cycles and shared subtrees) never get here: the loader
+    rejects them while composing the document.
     """
     if value is None or isinstance(value, (str, bool, int)):
         return True

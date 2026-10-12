@@ -220,3 +220,11 @@ class TestGroqReasoningEffort:
         assert mock_client.chat.completions.create.call_count == 2
         second_kwargs = mock_client.chat.completions.create.call_args_list[1].kwargs
         assert "reasoning_effort" not in second_kwargs
+
+
+class TestNativeProviderModelProperty:
+    @pytest.mark.parametrize(
+        "provider_class", [ClaudeProvider, GeminiProvider, GroqProvider]
+    )
+    def test_model_reports_the_configured_model(self, provider_class):
+        assert provider_class(api_key="k", model="the-model").model == "the-model"
