@@ -94,7 +94,9 @@ def load_providers_config(path: str | Path) -> ProvidersConfig:
 
     try:
         raw = yaml.load(text, Loader=_UniqueKeyLoader)  # noqa: S506 (SafeLoader)
-    except yaml.YAMLError as exc:
+    except (yaml.YAMLError, ValueError) as exc:
+        # ValueError: a scalar that resolves to int/date but cannot be built;
+        # its message quotes parts of the value, so it is reduced like the rest.
         mark = getattr(exc, "problem_mark", None)
         where = f" at line {mark.line + 1}" if mark is not None else ""
         raise ProviderConfigError(

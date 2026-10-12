@@ -93,6 +93,15 @@ class TestYamlHardening:
         assert "line" in message
         assert "secret-token" not in message
 
+    @pytest.mark.parametrize("scalar", ["2001-13-45", "0x_"])
+    def test_unconstructable_scalar_is_a_config_error_without_its_value(
+        self, tmp_path, scalar
+    ):
+        message = load_error(tmp_path, single(model=scalar))
+        assert "not valid YAML" in message
+        assert scalar not in message
+        assert "13" not in message
+
     def test_duplicate_top_level_key(self, tmp_path):
         assert "line" in load_error(tmp_path, single() + "default: p\n")
 
