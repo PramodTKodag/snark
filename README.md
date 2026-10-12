@@ -353,6 +353,8 @@ AI_PROVIDERS_FILE=/app/config/my-providers.yaml
 
 **Fallback.** A request goes to `default`. If it fails (error, rate limit, or an empty model reply), Snark tries each provider in `fallback` in order, skipping the one that already failed and any provider without an API key. On a content-filter refusal Snark first retries the same provider once with a softened prompt. If every provider fails the request returns an error.
 
+**Network.** Requests to `openai_compatible` providers go straight to the configured `url`: redirects are not followed, and the `OPENAI_*` variables (including `OPENAI_CUSTOM_HEADERS`) and the proxy and CA-bundle variables (`HTTPS_PROXY`, `SSL_CERT_FILE`) are ignored. A backend behind a private CA or a forward proxy is not supported.
+
 **`reasoning_effort`.** Reasoning models (e.g. gpt-oss) spend part of the token budget thinking. Set the effort through `extra_body`, as in the Groq entry above. Snark does not retry without it: if your model rejects `reasoning_effort`, remove it from `extra_body`.
 
 **Pricing.** Cost estimates use `price` or `free` when set, otherwise the vendored [LiteLLM](https://github.com/BerriAI/litellm) price map, looked up by the model id or `<provider name>/<model>`. A provider that is not named `groq`, `gemini`, or `claude`, or a model missing from that map, shows cost 0 until you set `price` or `free`.
