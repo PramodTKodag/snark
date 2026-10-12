@@ -1,5 +1,6 @@
 import copy
 import logging
+import os
 import time
 from collections.abc import Iterator
 
@@ -22,6 +23,21 @@ logger = logging.getLogger(__name__)
 KEYLESS_PLACEHOLDER_API_KEY = "keyless"
 REQUEST_TIMEOUT = openai.Timeout(60.0, connect=5.0)
 MAX_RETRIES = 2
+CUSTOM_HEADERS_ENV = "OPENAI_CUSTOM_HEADERS"
+
+
+def _ambient_header_names() -> list[str]:
+    """Header names the SDK would add from ``OPENAI_CUSTOM_HEADERS``.
+
+    Parsed the way the SDK does (one ``Name: value`` per line) so each can be
+    omitted explicitly; ``Authorization`` is pinned separately.
+    """
+    names = []
+    for line in os.environ.get(CUSTOM_HEADERS_ENV, "").split("\n"):
+        name = line[: line.find(":")].strip() if ":" in line else ""
+        if name and name.lower() != "authorization":
+            names.append(name)
+    return names
 
 
 class OpenAICompatibleProvider(AIProvider):
@@ -48,16 +64,21 @@ class OpenAICompatibleProvider(AIProvider):
             timeout=REQUEST_TIMEOUT,
             max_retries=MAX_RETRIES,
             default_headers={
-                # The SDK adds these from OPENAI_ORG_ID / OPENAI_PROJECT_ID unless
-                # told to omit them; Omit() keeps the environment off the wire.
+                # The SDK adds these from OPENAI_ORG_ID / OPENAI_PROJECT_ID and
+                # OPENAI_CUSTOM_HEADERS unless told to omit them; Omit() keeps
+                # the environment off the wire.
+                **{name: openai.Omit() for name in _ambient_header_names()},
                 "OpenAI-Organization": openai.Omit(),
                 "OpenAI-Project": openai.Omit(),
                 # An explicit header makes the SDK discard any Authorization
                 # injected through OPENAI_CUSTOM_HEADERS.
                 "Authorization": f"Bearer {bearer_key}",
             },
-            # Requests carry prompts and a bearer token: never follow redirects.
-            http_client=openai.DefaultHttpxClient(follow_redirects=False),
+            # Requests carry prompts and a bearer token: never follow redirects
+            # and never route through proxies or CA bundles from the environment.
+            http_client=openai.DefaultHttpxClient(
+                follow_redirects=False, trust_env=False
+            ),
         )
         logger.info("Provider %s ready: model=%s", spec.name, spec.model)
 
