@@ -1,7 +1,8 @@
 # AI providers. `default` answers requests; `fallback` is tried in order when it
 # fails. API keys are never written here: `key` names the environment variable
 # that holds the key. Keyless providers (a local Ollama) omit `key`.
-# Switch providers by editing `default:`, then restart.
+# Switch providers by editing `default:`, then restart. The prod image bakes this
+# file in, so rebuild it or mount your own file (AI_PROVIDERS_FILE) there.
 default: groq
 fallback: [groq, gemini, claude]
 
