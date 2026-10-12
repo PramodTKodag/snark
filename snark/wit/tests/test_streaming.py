@@ -18,6 +18,10 @@ class _OneShotProvider(AIProvider):
     def name(self):
         return "dummy"
 
+    @property
+    def model(self):
+        return "m"
+
     def generate(self, system_prompt, user_prompt, temperature=0.9, max_tokens=200):
         return AIResponse(
             text="whole thing",
@@ -147,7 +151,7 @@ class TestServiceStreaming:
         mock_cache.get.return_value = None
         provider = MagicMock()
         provider.name = "groq"
-        provider._model = "test-model"
+        provider.model = "test-model"
         provider.generate_stream.return_value = iter(["No", " thanks"])
         mock_registry.get.return_value = provider
         mock_registry.get_fallbacks.return_value = []
@@ -171,7 +175,7 @@ class TestServiceStreaming:
         mock_cache.get.return_value = None
         provider = MagicMock()
         provider.name = "groq"
-        provider._model = "test-model"
+        provider.model = "test-model"
         provider.generate_stream.return_value = iter(["No", " thanks"])
         mock_registry.get.return_value = provider
         mock_registry.get_fallbacks.return_value = []
@@ -187,7 +191,7 @@ class TestServiceStreaming:
         mock_cache.get.return_value = None
         provider = MagicMock()
         provider.name = "claude"
-        provider._model = "test-model"
+        provider.model = "test-model"
         provider.generate_stream.return_value = iter(
             ["No", " thanks", StreamUsage(input_tokens=9, output_tokens=5)]
         )
@@ -214,7 +218,7 @@ class TestServiceStreaming:
         mock_cache.get.return_value = None
         provider = MagicMock()
         provider.name = "claude"
-        provider._model = "test-model"
+        provider.model = "test-model"
         provider.generate_stream.return_value = iter(
             ["No", " thanks", StreamUsage(input_tokens=9, output_tokens=5)]
         )

@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
+
+MAX_ERROR_SUMMARY_LENGTH = 300
 
 
 @dataclass
@@ -39,10 +41,36 @@ class ContentFilterError(ProviderError):
     """Raised when a provider blocks output due to content filtering."""
 
 
+def safe_error_summary(exc: BaseException, secrets: Iterable[str]) -> str:
+    """Describe a provider failure without leaking credentials.
+
+    Auth failures (HTTP 401/403) reduce to the exception class and status, since
+    their bodies can echo the credential. Anything else keeps the message with
+    every secret value replaced by ``***``, truncated to fit ``error_detail``.
+    """
+    summary = type(exc).__name__
+    status = getattr(exc, "status_code", None)
+    if isinstance(status, int):
+        summary += f" (status {status})"
+        if status in (401, 403):
+            return summary
+    message = str(exc)
+    for secret in secrets:
+        if secret:
+            message = message.replace(secret, "***")
+    if message:
+        summary += f": {message}"
+    return summary[:MAX_ERROR_SUMMARY_LENGTH]
+
+
 class AIProvider(ABC):
     @property
     @abstractmethod
     def name(self) -> str: ...
+
+    @property
+    @abstractmethod
+    def model(self) -> str: ...
 
     @abstractmethod
     def generate(

@@ -49,6 +49,10 @@ class GroqProvider(AIProvider):
     def name(self) -> str:
         return "groq"
 
+    @property
+    def model(self) -> str:
+        return self._model
+
     def is_available(self) -> bool:
         return self._client is not None
 

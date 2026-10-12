@@ -50,6 +50,10 @@ class GeminiProvider(AIProvider):
     def name(self) -> str:
         return "gemini"
 
+    @property
+    def model(self) -> str:
+        return self._model_name
+
     def is_available(self) -> bool:
         return self._client is not None
 
