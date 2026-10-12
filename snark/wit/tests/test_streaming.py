@@ -105,7 +105,9 @@ class TestProviderStreamUsage:
             extra_body,
         ):
             # An unexpected kwarg raises TypeError here, like the real SDK.
-            return iter([c1, c2, usage_chunk])
+            stream = MagicMock()
+            stream.__enter__.return_value = iter([c1, c2, usage_chunk])
+            return stream
 
         client.chat.completions.create.side_effect = fake_create
 

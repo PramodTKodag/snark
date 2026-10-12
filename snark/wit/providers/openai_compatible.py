@@ -44,7 +44,8 @@ class OpenAICompatibleProvider(AIProvider):
     """Chat-completions provider for any OpenAI-compatible endpoint.
 
     Serves Groq, Ollama, OpenRouter, vLLM and the like from a ``ProviderSpec``.
-    The caller resolves the API key; this class never reads the environment.
+    The configured key and url are the only credentials and endpoint used;
+    ambient ``OPENAI_*`` settings are suppressed.
     """
 
     def __init__(self, spec: ProviderSpec, api_key: str):
@@ -147,7 +148,10 @@ class OpenAICompatibleProvider(AIProvider):
             )
             raise ContentFilterError(f"{self.name} content filter blocked the response")
 
-        text = choice.message.content
+        message = getattr(choice, "message", None)
+        if message is None:
+            raise ProviderError(f"{self.name} returned no message")
+        text = message.content
         if not text:
             raise ProviderError(f"{self.name} returned an empty response")
 
@@ -181,32 +185,34 @@ class OpenAICompatibleProvider(AIProvider):
         )
 
         try:
-            stream = client.chat.completions.create(
+            with client.chat.completions.create(
                 **kwargs, stream=True, stream_options={"include_usage": True}
-            )
-            input_tokens = 0
-            output_tokens = 0
-            produced_text = False
-            for chunk in stream:
-                # include_usage emits a final choice-less chunk carrying usage.
-                usage = getattr(chunk, "usage", None)
-                if usage:
-                    input_tokens = usage.prompt_tokens or 0
-                    output_tokens = usage.completion_tokens or 0
-                if not chunk.choices:
-                    continue
-                choice = chunk.choices[0]
-                if getattr(choice, "finish_reason", None) == "content_filter":
-                    raise ContentFilterError(
-                        f"{self.name} content filter blocked the response"
-                    )
-                delta = choice.delta.content or ""
-                if delta:
-                    produced_text = True
-                    yield delta
-            if not produced_text:
-                raise ProviderError(f"{self.name} returned an empty stream")
-            yield StreamUsage(input_tokens=input_tokens, output_tokens=output_tokens)
+            ) as stream:
+                input_tokens = 0
+                output_tokens = 0
+                produced_text = False
+                for chunk in stream:
+                    # include_usage emits a final choice-less chunk carrying usage.
+                    usage = getattr(chunk, "usage", None)
+                    if usage:
+                        input_tokens = usage.prompt_tokens or 0
+                        output_tokens = usage.completion_tokens or 0
+                    if not chunk.choices:
+                        continue
+                    choice = chunk.choices[0]
+                    if getattr(choice, "finish_reason", None) == "content_filter":
+                        raise ContentFilterError(
+                            f"{self.name} content filter blocked the response"
+                        )
+                    delta = choice.delta.content or ""
+                    if delta:
+                        produced_text = True
+                        yield delta
+                if not produced_text:
+                    raise ProviderError(f"{self.name} returned an empty stream")
+                yield StreamUsage(
+                    input_tokens=input_tokens, output_tokens=output_tokens
+                )
         except ProviderError:
             raise
         except Exception as exc:

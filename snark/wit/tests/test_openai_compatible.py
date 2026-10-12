@@ -2,6 +2,7 @@ import json
 import logging
 
 import httpx2
+import openai
 import pytest
 from wit.providers.base import (
     AIResponse,
@@ -10,7 +11,12 @@ from wit.providers.base import (
     StreamUsage,
     safe_error_summary,
 )
-from wit.providers.config import ProviderSpec, ProviderType
+from wit.providers.config import (
+    RESERVED_EXTRA_BODY_KEYS,
+    ProviderConfigError,
+    ProviderSpec,
+    ProviderType,
+)
 from wit.providers.openai_compatible import OpenAICompatibleProvider
 
 API_KEY = "sk-test-SECRET-1234567890"
@@ -96,7 +102,10 @@ class Wire:
 
     def handle(self, request):
         self.requests.append(request)
-        return self.responses.pop(0)
+        response = self.responses.pop(0)
+        if isinstance(response, Exception):
+            raise response
+        return response
 
     def json_body(self, index=-1):
         return json.loads(self.requests[index].content)
@@ -182,6 +191,17 @@ class TestGenerate:
         with pytest.raises(ProviderError):
             provider().generate("s", "u")
 
+    @pytest.mark.parametrize("message", [None, "missing"])
+    def test_choice_without_message_raises_provider_error(self, wire, message):
+        choice = {"index": 0, "finish_reason": "stop"}
+        if message != "missing":
+            choice["message"] = message
+        wire.reply(httpx2.Response(200, json={"choices": [choice]}))
+
+        with pytest.raises(ProviderError, match="no message") as excinfo:
+            provider().generate("s", "u")
+        assert not isinstance(excinfo.value, ContentFilterError)
+
 
 class TestStream:
     def test_yields_deltas_then_usage_and_requests_usage(self, wire):
@@ -226,6 +246,23 @@ class TestStream:
         wire.reply(httpx2.Response(400, json={"error": {"message": "bad"}}))
         with pytest.raises(ProviderError):
             list(provider().generate_stream("s", "u"))
+
+    def test_stream_is_closed_when_the_consumer_stops_early(self, wire, monkeypatch):
+        closed = []
+        original_close = openai.Stream.close
+        monkeypatch.setattr(
+            openai.Stream,
+            "close",
+            lambda stream: (closed.append(stream), original_close(stream)),
+        )
+        wire.reply(sse(delta_chunk("a"), delta_chunk("b"), USAGE_CHUNK))
+
+        stream = provider().generate_stream("s", "u")
+        assert next(stream) == "a"
+        assert closed == []
+        stream.close()
+
+        assert len(closed) == 1
 
 
 class TestAvailability:
@@ -299,6 +336,59 @@ class TestErrorHandling:
         assert "***" in str(excinfo.value)
 
 
+class TestTransportFailures:
+    def test_refused_connection_names_its_cause(self, wire):
+        wire.reply(*[httpx2.ConnectError("[Errno 61] Connection refused")] * 3)
+
+        with pytest.raises(ProviderError) as excinfo:
+            provider().generate("s", "u")
+
+        message = str(excinfo.value)
+        assert "APIConnectionError" in message
+        assert "ConnectError" in message and "Connection refused" in message
+
+    def test_stream_connection_failure_names_its_cause(self, wire):
+        wire.reply(*[httpx2.ConnectError("name resolution failed")] * 3)
+
+        with pytest.raises(ProviderError, match="ConnectError"):
+            list(provider().generate_stream("s", "u"))
+
+    def test_cause_message_is_scrubbed(self, wire):
+        wire.reply(*[httpx2.ConnectError(f"tunnel to {API_KEY} failed")] * 3)
+
+        with pytest.raises(ProviderError) as excinfo:
+            provider().generate("s", "u")
+
+        assert API_KEY not in str(excinfo.value)
+        assert "tunnel to *** failed" in str(excinfo.value)
+
+
+class TestProviderSpecRules:
+    def test_keyed_spec_over_http_is_rejected(self):
+        with pytest.raises(ProviderConfigError, match="https"):
+            make_spec(url="http://llm.example.test/v1")
+
+    def test_openai_compatible_spec_requires_a_url(self):
+        with pytest.raises(ProviderConfigError, match="url"):
+            make_spec(url=None)
+
+    def test_keyless_spec_over_http_is_allowed(self):
+        make_spec(key_env=None, url="http://localhost:11434/v1")
+
+    def test_native_spec_needs_no_url(self):
+        ProviderSpec(
+            name="g", type=ProviderType.GEMINI, model="m", key_env="GEMINI_API_KEY"
+        )
+
+
+class TestReservedExtraBodyKeys:
+    def test_every_field_the_provider_controls_is_reserved(self):
+        kwargs = provider()._request_kwargs("s", "u", 0.5, 10)
+        controlled = set(kwargs) - {"extra_body"}
+
+        assert controlled | {"stream", "stream_options"} <= RESERVED_EXTRA_BODY_KEYS
+
+
 class TestSafeErrorSummary:
     class _StatusError(Exception):
         def __init__(self, message, status_code):
@@ -319,6 +409,19 @@ class TestSafeErrorSummary:
 
     def test_message_without_status(self):
         assert safe_error_summary(ValueError("boom"), []) == "ValueError: boom"
+
+    def test_appends_the_scrubbed_cause(self):
+        exc = ValueError("outer")
+        exc.__cause__ = OSError("dial secret-1 refused")
+        assert (
+            safe_error_summary(exc, ["secret-1"])
+            == "ValueError: outer (caused by OSError: dial *** refused)"
+        )
+
+    def test_auth_statuses_do_not_append_the_cause(self):
+        exc = self._StatusError("leaks", 401)
+        exc.__cause__ = OSError("also leaks")
+        assert safe_error_summary(exc, []) == "_StatusError (status 401)"
 
     def test_truncates_after_scrubbing(self):
         summary = safe_error_summary(ValueError("x" * 1000), [])
