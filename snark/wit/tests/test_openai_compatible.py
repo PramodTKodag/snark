@@ -335,7 +335,8 @@ class TestNoAmbientEnvironment:
         monkeypatch.setenv("OPENAI_BASE_URL", "https://env.example.test/v1")
         monkeypatch.setenv("OPENAI_ADMIN_KEY", "sk-ENV-ADMIN")
         monkeypatch.setenv(
-            "OPENAI_CUSTOM_HEADERS", "Authorization: Bearer sk-ENV-HEADER"
+            "OPENAI_CUSTOM_HEADERS",
+            "Authorization: Bearer sk-ENV-HEADER\nX-Env-Injected: leaked",
         )
         wire.reply(completion())
 
@@ -347,7 +348,14 @@ class TestNoAmbientEnvironment:
         assert "openai-organization" not in request.headers
         assert "openai-project" not in request.headers
         assert b"sk-ENV-KEY" not in request.content
+        assert "x-env-injected" not in request.headers
         assert "sk-ENV" not in str(request.headers)
+
+    def test_proxy_and_ca_environment_is_ignored(self, wire, monkeypatch):
+        monkeypatch.setenv("HTTPS_PROXY", "http://proxy.example.test:3128")
+        monkeypatch.setenv("SSL_CERT_FILE", "/nonexistent/ca.pem")
+
+        assert not provider()._client._client._mounts
 
     def test_keyless_ignores_env_api_key(self, wire, monkeypatch):
         monkeypatch.setenv("OPENAI_API_KEY", "sk-ENV-KEY")
