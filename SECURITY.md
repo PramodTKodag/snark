@@ -75,6 +75,10 @@ safety-hardening issue).
 If you are deploying Snark:
 
 - Never commit `.env` files or API keys to version control
+- The AI providers file (`config/providers.yaml`) names the environment variables
+  that hold keys and never holds a key itself; a provider with a `key` must use an
+  `https` URL. Treat the file like any other config: review changes to it, and keep
+  it writable only by operators
 - Use strong, unique values for `SECRET_KEY`
 - Set `DEBUG=False` in production
 - Run behind a reverse proxy (nginx, Caddy) with TLS

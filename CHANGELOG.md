@@ -13,12 +13,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Opt-in observability stack as a Docker Compose profile (`--profile observability`): Grafana Loki + Grafana Alloy (scrapes container stdout) + Grafana with a pre-provisioned datasource and reliability dashboard — snark stays backend-neutral (standard JSON stdout), so any other aggregator can be used instead
 - Structured `generation_event` log emitted at the reliability choke point, for log-based dashboards
 - Token-authenticated Prometheus `/metrics` endpoint with a `snark_generations_total` reliability counter, plus a Prometheus service and error/fallback-rate panels in the bundled stack
-- Configurable model tuning via environment: `GROQ_REASONING_EFFORT`, per-length token ceilings (`LENGTH_TOKENS_SHORT`/`_MEDIUM`/`_LONG`), and a global `PERSONA_MAX_TOKENS_FLOOR`
+- Configurable model tuning via environment: per-length token ceilings (`LENGTH_TOKENS_SHORT`/`_MEDIUM`/`_LONG`) and a global `PERSONA_MAX_TOKENS_FLOOR`
+- AI provider config file (`config/providers.yaml`, overridable with `AI_PROVIDERS_FILE`) holding the default provider, fallback order, models, and endpoints; API keys stay in the environment
+- Generic `openai_compatible` provider type for any OpenAI-compatible endpoint (Groq, OpenRouter, vLLM, a local Ollama), with per-provider `extra_body`
+- Ollama support: a keyless `ollama` entry in the shipped providers file and a quick-start guide in the README
+- Per-provider `price` and `free` settings for the dashboard cost estimate
 
 ### Changed
 
-- Default Groq model is now `openai/gpt-oss-20b` (the previous default was retired by Groq); the provider sends `reasoning_effort` for reasoning models and transparently retries without it for models that don't support it
+- Default Groq model is now `openai/gpt-oss-20b` (the previous default was retired by Groq)
+- A provider's name is its key in `config/providers.yaml` (logs, stats, and fallback use it)
+- `reasoning_effort` is now set through the provider's `extra_body`; there is no automatic retry without it when a model rejects it
+- An empty model reply now triggers fallback to the next provider instead of being returned
 - Claude: a bad-request error is now treated as a content filter only when it mentions content filtering; the previous match on "blocked" could turn an unrelated 400 (for example an oversized prompt) into a content-filter fallback
+
+### Removed
+
+- `AI_DEFAULT_PROVIDER` and `AI_PROVIDER_FALLBACK_ORDER` settings (use `default` and `fallback` in the providers file)
+- `GROQ_MODEL`, `GROQ_REASONING_EFFORT`, `GEMINI_MODEL`, and `CLAUDE_MODEL` settings (use `model` and `extra_body` in the providers file)
+- `PROVIDER_TOKEN_COST` setting (use `price` or `free` in the providers file)
+- The `groq` dependency and dedicated Groq adapter, replaced by the `openai_compatible` provider
 
 ### Security
 
