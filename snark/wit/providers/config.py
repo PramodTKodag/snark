@@ -126,7 +126,7 @@ def _build_config(raw: Any) -> ProvidersConfig:
 
     providers: dict[str, ProviderSpec] = {}
     for index, (name, raw_spec) in enumerate(raw_providers.items(), start=1):
-        if not isinstance(name, str) or not PROVIDER_NAME_PATTERN.match(name):
+        if not isinstance(name, str) or not PROVIDER_NAME_PATTERN.fullmatch(name):
             raise ProviderConfigError(f"provider #{index} has an invalid name")
         providers[name] = _build_spec(name, raw_spec)
 
@@ -176,7 +176,7 @@ def _build_spec(name: str, raw: Any) -> ProviderSpec:
 
     key_env = raw.get("key")
     if key_env is not None and (
-        not isinstance(key_env, str) or not KEY_ENV_PATTERN.match(key_env)
+        not isinstance(key_env, str) or not KEY_ENV_PATTERN.fullmatch(key_env)
     ):
         raise fail("key", "must be an environment variable NAME such as MY_API_KEY")
     if key_env is None and not openai_compatible:
