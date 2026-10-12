@@ -145,6 +145,13 @@ class TestProviderFields:
         text = f"default: x\nproviders:\n  '{name}':\n    type: claude\n"
         assert name not in load_error(tmp_path, text)
 
+    def test_name_with_trailing_newline_is_rejected(self, tmp_path):
+        text = (
+            'default: "p\\n"\nproviders:\n  "p\\n":\n'
+            "    type: openai_compatible\n    url: http://localhost/v1\n    model: m\n"
+        )
+        load_error(tmp_path, text)
+
     def test_name_of_50_chars_is_allowed(self, tmp_path):
         name = "a" * 50
         text = f"default: {name}\n" + provider_block().replace("  p:", f"  {name}:")
@@ -165,6 +172,9 @@ class TestKeyAndUrl:
     def test_key_must_be_an_env_name(self, tmp_path, key):
         message = load_error(tmp_path, single(url="https://h/v1", key=key))
         assert SENTINEL_KEY not in message
+
+    def test_key_with_trailing_newline_is_rejected(self, tmp_path):
+        load_error(tmp_path, single(url="https://h/v1", key='"MY_API_KEY\\n"'))
 
     def test_key_over_http_rejected(self, tmp_path):
         load_error(tmp_path, single(key="MY_KEY", url="http://h/v1"))
