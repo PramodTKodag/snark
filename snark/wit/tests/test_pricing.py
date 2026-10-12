@@ -47,98 +47,157 @@ class TestExtract:
         assert out["gemini-2.0-flash"] == {"input": 1e-7, "output": 4e-7}
 
 
+PROVIDERS_FILE = """\
+default: local
+fallback: [local]
+providers:
+  local:
+    type: openai_compatible
+    url: http://localhost:11434/v1
+    model: m
+    free: true
+  claude:
+    type: openai_compatible
+    url: https://llm.example.test/v1
+    model: claude-haiku
+    price: [1, 3]
+"""
+
+UNPRICED_FILE = """\
+default: plain
+fallback: [plain]
+providers:
+  plain:
+    type: openai_compatible
+    url: http://localhost:11434/v1
+    model: m
+"""
+
+PRICED_ONLY_FILE = """\
+default: claude
+fallback: [claude]
+providers:
+  claude:
+    type: openai_compatible
+    url: https://llm.example.test/v1
+    model: claude-haiku
+    price: [1, 3]
+"""
+
+FREE_ONLY_FILE = """\
+default: local
+fallback: [local]
+providers:
+  local:
+    type: openai_compatible
+    url: http://localhost:11434/v1
+    model: m
+    free: true
+"""
+
+NO_VENDORED_PRICES = {}
+
+
 class TestGetRates:
-    def test_resolves_known_model_from_map(self, monkeypatch, settings):
-        settings.PROVIDER_TOKEN_COST = ""
+    def test_free_provider_costs_zero(self, monkeypatch, use_providers_file):
+        use_providers_file(PROVIDERS_FILE)
+        # A vendored entry for the same model must not make a free provider cost.
+        monkeypatch.setattr(
+            pricing, "_price_map", lambda: {"m": {"input": 9.9, "output": 9.9}}
+        )
+        assert pricing.get_rates("local", "m") == (0.0, 0.0)
+
+    def test_price_converts_per_million_to_per_token(
+        self, monkeypatch, use_providers_file
+    ):
+        use_providers_file(PROVIDERS_FILE)
+        monkeypatch.setattr(pricing, "_price_map", lambda: NO_VENDORED_PRICES)
+        rates = pricing.get_rates("claude", "claude-haiku")
+        assert rates == pytest.approx((1e-6, 3e-6))
+
+    def test_price_beats_vendored_map(self, monkeypatch, use_providers_file):
+        use_providers_file(PROVIDERS_FILE)
         monkeypatch.setattr(
             pricing,
             "_price_map",
-            lambda: {"groq/llama-3.3-70b-versatile": {"input": 5e-7, "output": 8e-7}},
+            lambda: {"claude-haiku": {"input": 9.9, "output": 9.9}},
         )
-        assert pricing.get_rates("groq", "llama-3.3-70b-versatile") == (5e-7, 8e-7)
+        rates = pricing.get_rates("claude", "claude-haiku")
+        assert rates == pytest.approx((1e-6, 3e-6))
 
-    def test_resolves_bare_model_key(self, monkeypatch, settings):
-        settings.PROVIDER_TOKEN_COST = ""
+    def test_provider_without_price_uses_vendored_map(
+        self, monkeypatch, use_providers_file
+    ):
+        use_providers_file(UNPRICED_FILE)
+        monkeypatch.setattr(
+            pricing, "_price_map", lambda: {"m": {"input": 5e-7, "output": 8e-7}}
+        )
+        assert pricing.get_rates("plain", "m") == (5e-7, 8e-7)
+
+    def test_unknown_provider_falls_back_to_vendored_map(
+        self, monkeypatch, use_providers_file
+    ):
+        # Historic log rows may name a provider that was removed from the file.
+        use_providers_file(PROVIDERS_FILE)
+        monkeypatch.setattr(
+            pricing,
+            "_price_map",
+            lambda: {"removed/model": {"input": 5e-7, "output": 8e-7}},
+        )
+        assert pricing.get_rates("removed", "model") == (5e-7, 8e-7)
+
+    def test_resolves_bare_model_key(self, monkeypatch, use_providers_file):
+        use_providers_file(UNPRICED_FILE)
         monkeypatch.setattr(
             pricing,
             "_price_map",
             lambda: {"gemini-2.0-flash": {"input": 1e-7, "output": 4e-7}},
         )
-        assert pricing.get_rates("gemini", "gemini-2.0-flash") == (1e-7, 4e-7)
+        assert pricing.get_rates("plain", "gemini-2.0-flash") == (1e-7, 4e-7)
 
-    def test_unknown_returns_zero(self, monkeypatch, settings):
-        settings.PROVIDER_TOKEN_COST = ""
-        monkeypatch.setattr(pricing, "_price_map", lambda: {})
-        assert pricing.get_rates("groq", "nope") == (0.0, 0.0)
-
-    def test_env_override_input_output_wins(self, monkeypatch, settings):
-        settings.PROVIDER_TOKEN_COST = "claude:1:3"
-        monkeypatch.setattr(
-            pricing,
-            "_price_map",
-            lambda: {"claude-haiku": {"input": 9.9, "output": 9.9}},
-        )
-        # $1/1M input, $3/1M output -> per-token; override beats the map.
-        rates = pricing.get_rates("claude", "claude-haiku")
-        assert rates == pytest.approx((1e-6, 3e-6))
-
-    def test_legacy_blended_override(self, settings):
-        settings.PROVIDER_TOKEN_COST = "claude:2"
-        assert pricing.get_rates("claude", "any") == pytest.approx((2e-6, 2e-6))
-
-    def test_legacy_dict_override(self, settings):
-        settings.PROVIDER_TOKEN_COST = {"claude": 1.5}
-        assert pricing.get_rates("claude", "any") == pytest.approx((1.5e-6, 1.5e-6))
-
-    def test_malformed_override_is_skipped_not_crash(self, monkeypatch, settings):
-        # A bad rate must be skipped, not raise at render time; the valid part
-        # still parses and the map still resolves other providers.
-        settings.PROVIDER_TOKEN_COST = "claude:abc,groq:1:2"
-        monkeypatch.setattr(
-            pricing,
-            "_price_map",
-            lambda: {"claude-haiku": {"input": 9.9, "output": 9.9}},
-        )
-        assert pricing.get_rates("groq", "x") == pytest.approx((1e-6, 2e-6))
-        # claude's malformed override skipped -> falls back to the map, no crash
-        assert pricing.get_rates("claude", "claude-haiku") == (9.9, 9.9)
+    def test_nothing_known_returns_zero(self, monkeypatch, use_providers_file):
+        use_providers_file(UNPRICED_FILE)
+        monkeypatch.setattr(pricing, "_price_map", lambda: NO_VENDORED_PRICES)
+        assert pricing.get_rates("plain", "nope") == (0.0, 0.0)
+        assert pricing.get_rates("removed", "nope") == (0.0, 0.0)
 
 
 class TestRequestCost:
-    def test_uses_split_rates(self, settings):
-        settings.PROVIDER_TOKEN_COST = "claude:1:3"
+    def test_uses_split_rates(self, use_providers_file):
+        use_providers_file(PROVIDERS_FILE)
         # $1/1M input + $3/1M output over 1M tokens each -> 1 + 3 = 4.0
         assert pricing.request_cost("claude", "m", 1_000_000, 1_000_000) == 4.0
 
-    def test_none_tokens_treated_as_zero(self, settings):
-        settings.PROVIDER_TOKEN_COST = "claude:1:3"
+    def test_none_tokens_treated_as_zero(self, use_providers_file):
+        use_providers_file(PROVIDERS_FILE)
         assert pricing.request_cost("claude", "m", None, None) == 0.0
 
-    def test_unknown_provider_is_zero(self, monkeypatch, settings):
-        settings.PROVIDER_TOKEN_COST = ""
-        monkeypatch.setattr(pricing, "_price_map", lambda: {})
+    def test_unknown_provider_is_zero(self, monkeypatch, use_providers_file):
+        use_providers_file(PROVIDERS_FILE)
+        monkeypatch.setattr(pricing, "_price_map", lambda: NO_VENDORED_PRICES)
         assert pricing.request_cost("nope", "m", 100, 100) == 0.0
-
-    def test_rounds_to_six_places(self, settings):
-        settings.PROVIDER_TOKEN_COST = "claude:1:3"
-        # 8 input * $1/1M + 12 output * $3/1M = 0.000008 + 0.000036
-        assert pricing.request_cost("claude", "m", 8, 12) == pytest.approx(4.4e-5)
 
 
 class TestHasPricing:
-    def test_true_when_map_non_empty(self, monkeypatch, settings):
-        settings.PROVIDER_TOKEN_COST = ""
+    def test_true_with_vendored_map_only(self, monkeypatch, use_providers_file):
+        use_providers_file(UNPRICED_FILE)
         monkeypatch.setattr(
-            pricing, "_price_map", lambda: {"x": {"input": 1, "output": 1}}
+            pricing, "_price_map", lambda: {"m": {"input": 1e-7, "output": 1e-7}}
         )
         assert pricing.has_pricing() is True
 
-    def test_false_when_map_empty_and_no_override(self, monkeypatch, settings):
-        settings.PROVIDER_TOKEN_COST = ""
-        monkeypatch.setattr(pricing, "_price_map", lambda: {})
+    def test_true_with_only_a_yaml_price(self, monkeypatch, use_providers_file):
+        use_providers_file(PRICED_ONLY_FILE)
+        monkeypatch.setattr(pricing, "_price_map", lambda: NO_VENDORED_PRICES)
+        assert pricing.has_pricing() is True
+
+    def test_false_with_only_a_free_provider(self, monkeypatch, use_providers_file):
+        """A free provider is a known zero, not a source of pricing data."""
+        use_providers_file(FREE_ONLY_FILE)
+        monkeypatch.setattr(pricing, "_price_map", lambda: NO_VENDORED_PRICES)
         assert pricing.has_pricing() is False
 
-    def test_true_when_only_override(self, monkeypatch, settings):
-        settings.PROVIDER_TOKEN_COST = "claude:1:3"
-        monkeypatch.setattr(pricing, "_price_map", lambda: {})
-        assert pricing.has_pricing() is True
+    def test_false_when_nothing_is_priced(self, monkeypatch, use_providers_file):
+        use_providers_file(UNPRICED_FILE)
+        monkeypatch.setattr(pricing, "_price_map", lambda: NO_VENDORED_PRICES)
+        assert pricing.has_pricing() is False

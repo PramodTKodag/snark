@@ -41,6 +41,53 @@ def _disable_ssl_redirect(settings):
     settings.SECURE_SSL_REDIRECT = False
 
 
+@pytest.fixture(autouse=True)
+def _reset_provider_registry():
+    """Drop loaded providers around every test.
+
+    The registry caches providers built from the providers file and the process
+    environment; resetting keeps tests that override either from leaking.
+    """
+    from wit.providers import ProviderRegistry
+
+    ProviderRegistry.reset()
+    yield
+    ProviderRegistry.reset()
+
+
+@pytest.fixture
+def use_providers_file(tmp_path, settings):
+    """Point the registry at a providers file with the given YAML text."""
+    from wit.providers import ProviderRegistry
+
+    def _use(text: str) -> None:
+        path = tmp_path / "providers.yaml"
+        path.write_text(text)
+        settings.AI_PROVIDERS_FILE = str(path)
+        ProviderRegistry.reset()
+
+    return _use
+
+
+@pytest.fixture
+def claude_priced_providers(use_providers_file):
+    """A providers file where `claude` costs $1 in / $3 out per 1M tokens.
+
+    Only the name and price matter to the pricing tests, so the entry is a
+    generic `openai_compatible` one rather than the native Claude adapter.
+    """
+    use_providers_file("""\
+default: claude
+fallback: [claude]
+providers:
+  claude:
+    type: openai_compatible
+    url: https://llm.example.test/v1
+    model: test-model
+    price: [1, 3]
+""")
+
+
 @pytest.fixture
 def api_client():
     return APIClient()

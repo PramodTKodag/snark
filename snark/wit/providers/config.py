@@ -56,6 +56,16 @@ class ProviderSpec:
 
     def __post_init__(self):
         """Cross-field rules every spec must satisfy, however it was built."""
+        if self.type is not ProviderType.OPENAI_COMPATIBLE and self.key_env is None:
+            raise ProviderConfigError(f"provider '{self.name}': 'key' is required")
+        if self.free and self.key_env is not None:
+            raise ProviderConfigError(
+                f"provider '{self.name}': 'free' is only for keyless providers"
+            )
+        if self.free and self.price is not None:
+            raise ProviderConfigError(
+                f"provider '{self.name}': 'free' cannot be combined with 'price'"
+            )
         if self.type is not ProviderType.OPENAI_COMPATIBLE:
             return
         if not self.url:
@@ -202,17 +212,11 @@ def _build_spec(name: str, raw: Any) -> ProviderSpec:
         not isinstance(key_env, str) or not KEY_ENV_PATTERN.fullmatch(key_env)
     ):
         raise fail("key", "must be an environment variable NAME such as MY_API_KEY")
-    if key_env is None and not openai_compatible:
-        raise fail("key", "is required")
 
     free = raw.get("free", False)
     if not isinstance(free, bool):
         raise fail("free", "must be true or false")
     price = _build_price(raw["price"], fail) if "price" in raw else None
-    if free and key_env is not None:
-        raise fail("free", "is only for keyless providers")
-    if free and price is not None:
-        raise fail("free", "cannot be combined with 'price'")
 
     url = None
     extra_body = None

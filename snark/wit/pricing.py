@@ -1,21 +1,20 @@
 """Per-model token pricing for the cost estimate.
 
-Rates come from a vendored copy of LiteLLM's community-maintained pricing map
+A provider's `price` or `free` setting in the AI providers file wins, so
+operators can set or correct prices by editing the file and restarting. Otherwise rates come
+from a vendored copy of LiteLLM's community-maintained pricing map
 (pricing_data.json, MIT-licensed, refreshable via `manage.py update_pricing`).
-The PROVIDER_TOKEN_COST env override wins per provider so operators can tune or
-correct prices without a redeploy. All rates are dollars per single token.
+All rates are dollars per single token.
 """
 
 import json
-import logging
 from functools import lru_cache
 from pathlib import Path
 
-from django.conf import settings
-
-logger = logging.getLogger(__name__)
+from .providers import ProviderRegistry
 
 _DATA = Path(__file__).resolve().parent / "pricing_data.json"
+_TOKENS_PER_PRICE_UNIT = 1_000_000
 
 
 @lru_cache(maxsize=1)
@@ -26,41 +25,21 @@ def _price_map() -> dict:
         return {}
 
 
-def _env_overrides() -> dict:
-    """PROVIDER_TOKEN_COST -> {provider: (input_per_token, output_per_token)}.
-
-    Accepts "provider:in:out" (input/output $ per 1M) or legacy "provider:blended"
-    (applied to both). Values are per-1M; converted to per-token here.
-    """
-    raw = getattr(settings, "PROVIDER_TOKEN_COST", "") or ""
-    if isinstance(raw, dict):  # already-parsed legacy {provider: blended_per_1M}
-        return {p: (v / 1_000_000, v / 1_000_000) for p, v in raw.items()}
-    out = {}
-    for part in str(raw).split(","):
-        bits = [b.strip() for b in part.split(":")]
-        try:
-            if len(bits) == 2 and bits[0]:
-                rate = float(bits[1]) / 1_000_000
-                out[bits[0]] = (rate, rate)
-            elif len(bits) == 3 and bits[0]:
-                out[bits[0]] = (
-                    float(bits[1]) / 1_000_000,
-                    float(bits[2]) / 1_000_000,
-                )
-        except ValueError:
-            # A misconfigured override must not crash the dashboard at render
-            # time; skip the bad entry and keep the rest.
-            logger.warning("Ignoring malformed PROVIDER_TOKEN_COST entry: %r", part)
-    return out
-
-
 def get_rates(provider: str, model: str) -> tuple:
     """Return (input_per_token, output_per_token) for a provider/model.
 
+    The provider's configured `free`/`price` wins, then the vendored map.
     (0, 0) if unknown."""
-    override = _env_overrides().get(provider)
-    if override:
-        return override
+    spec = ProviderRegistry.spec(provider)
+    if spec is not None:
+        if spec.free:
+            return 0.0, 0.0
+        if spec.price is not None:
+            in_price, out_price = spec.price
+            return (
+                in_price / _TOKENS_PER_PRICE_UNIT,
+                out_price / _TOKENS_PER_PRICE_UNIT,
+            )
     data = _price_map()
     for key in (model, f"{provider}/{model}"):
         entry = data.get(key)
@@ -78,4 +57,6 @@ def request_cost(
 
 
 def has_pricing() -> bool:
-    return bool(_price_map()) or bool(_env_overrides())
+    return bool(_price_map()) or any(
+        spec.price is not None for spec in ProviderRegistry.specs().values()
+    )

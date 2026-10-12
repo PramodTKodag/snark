@@ -129,9 +129,9 @@ def test_unused_personas(persona_no, persona_roast):
 
 
 @pytest.mark.django_db
-def test_cost_estimate(persona_no, settings):
-    # claude override: input $1/1M, output $3/1M. groq unpriced (model "m").
-    settings.PROVIDER_TOKEN_COST = "claude:1:3"
+def test_cost_estimate(persona_no, claude_priced_providers):
+    # claude priced in the providers file: input $1/1M, output $3/1M.
+    # groq is not in the file and its model "m" is not in the vendored map.
     _log(
         persona_no,
         provider="claude",
@@ -149,8 +149,7 @@ def test_cost_estimate(persona_no, settings):
 
 
 @pytest.mark.django_db
-def test_cost_by_persona(persona_no, persona_roast, settings):
-    settings.PROVIDER_TOKEN_COST = "claude:1:3"
+def test_cost_by_persona(persona_no, persona_roast, claude_priced_providers):
     _log(
         persona_no,
         provider="claude",

@@ -12,6 +12,7 @@ RUN pip install --upgrade pip && pip install poetry && poetry config virtualenvs
 
 COPY pyproject.toml README.md ./
 COPY snark ./snark
+COPY config ./config
 
 RUN poetry install --no-interaction --no-ansi -v
 

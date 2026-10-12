@@ -1,55 +1,72 @@
 import logging
 import time
 
-from django.conf import settings
+import httpx
 
-from .base import AIProvider, AIResponse, ContentFilterError, ProviderError, StreamUsage
+from .base import AIResponse, ContentFilterError, StreamUsage
+from .config import ProviderSpec
+from .spec_backed import SpecBackedProvider, ambient_header_names
 
 logger = logging.getLogger(__name__)
 
+API_BASE_URL = "https://api.anthropic.com"
+CUSTOM_HEADERS_ENV = "ANTHROPIC_CUSTOM_HEADERS"
 
-class ClaudeProvider(AIProvider):
-    """Anthropic Claude provider."""
 
-    def __init__(self, api_key: str | None = None, model: str | None = None):
-        self._client = None
-        self._unavailable_reason: str | None = None
+class ClaudeProvider(SpecBackedProvider):
+    """Anthropic Claude provider, built from a ``ProviderSpec``.
+
+    The caller resolves the API key. The key and ``API_BASE_URL`` are the only
+    credential and endpoint used; ambient ``ANTHROPIC_*`` settings, proxies and
+    CA bundles are suppressed.
+    """
+
+    def __init__(self, spec: ProviderSpec, api_key: str):
+        super().__init__(spec, api_key)
 
         try:
             import anthropic
         except ImportError:
             self._unavailable_reason = "anthropic package not installed"
-            logger.warning("ClaudeProvider unavailable: %s", self._unavailable_reason)
+            logger.warning(
+                "Provider %s unavailable: %s", spec.name, self._unavailable_reason
+            )
             return
 
         self._anthropic = anthropic
-        self._api_key = (
-            api_key
-            if api_key is not None
-            else getattr(settings, "ANTHROPIC_API_KEY", "")
-        )
-        self._model = model or getattr(
-            settings, "CLAUDE_MODEL", "claude-haiku-4-5-20251001"
-        )
 
-        if not self._api_key:
-            self._unavailable_reason = "no API key (set ANTHROPIC_API_KEY)"
-            logger.warning("ClaudeProvider unavailable: %s", self._unavailable_reason)
+        if not api_key:
+            self._unavailable_reason = f"no API key (set {spec.key_env})"
             return
 
-        self._client = anthropic.Anthropic(api_key=self._api_key)
-        logger.info("ClaudeProvider ready: model=%s", self._model)
+        self._client = anthropic.Anthropic(
+            api_key=api_key,
+            base_url=API_BASE_URL,
+            default_headers={
+                # The SDK adds these from ANTHROPIC_CUSTOM_HEADERS unless told
+                # to omit them; Omit() keeps the environment off the wire.
+                **{
+                    name: anthropic.Omit()
+                    for name in ambient_header_names(CUSTOM_HEADERS_ENV)
+                },
+                "Authorization": anthropic.Omit(),
+            },
+            # Requests carry prompts and the API key: never follow redirects
+            # and never route through proxies or CA bundles from the environment.
+            # An explicit transport stops the SDK from reading proxies out of
+            # the environment (it ignores trust_env for that).
+            http_client=anthropic.DefaultHttpxClient(
+                transport=httpx.HTTPTransport(
+                    trust_env=False, limits=anthropic.DEFAULT_CONNECTION_LIMITS
+                ),
+                follow_redirects=False,
+                trust_env=False,
+            ),
+        )
+        logger.info("Provider %s ready: model=%s", spec.name, spec.model)
 
-    @property
-    def name(self) -> str:
-        return "claude"
-
-    @property
-    def model(self) -> str:
-        return self._model
-
-    def is_available(self) -> bool:
-        return self._client is not None
+    def _is_content_filter(self, exc: Exception) -> bool:
+        return "content filtering" in str(exc).lower()
 
     def generate(
         self,
@@ -58,37 +75,26 @@ class ClaudeProvider(AIProvider):
         temperature: float = 0.9,
         max_tokens: int = 200,
     ) -> AIResponse:
-        if self._client is None:
-            raise ProviderError(
-                f"Claude provider unavailable: {self._unavailable_reason}"
-            )
-
+        client = self._require_client()
         anthropic = self._anthropic
         start = time.monotonic()
         try:
-            response = self._client.messages.create(
-                model=self._model,
+            response = client.messages.create(
+                model=self.model,
                 max_tokens=max_tokens,
                 temperature=temperature,
                 system=system_prompt,
                 messages=[{"role": "user", "content": user_prompt}],
             )
         except anthropic.BadRequestError as exc:
-            if "content filtering" in str(exc).lower() or "blocked" in str(exc).lower():
-                logger.warning("Claude content filter triggered: %s", exc)
+            if self._is_content_filter(exc):
+                logger.warning("%s content filter triggered", self.name)
                 raise ContentFilterError(
-                    f"Claude content filter blocked response: {exc}"
-                ) from exc
-            logger.error("Claude bad request [%s]: %s", type(exc).__name__, exc)
-            raise ProviderError(f"Claude API call failed: {exc}") from exc
-        except anthropic.APIError as exc:
-            logger.error("Claude API error [%s]: %s", type(exc).__name__, exc)
-            raise ProviderError(f"Claude API call failed: {exc}") from exc
+                    f"{self.name} content filter blocked the response"
+                ) from None
+            raise self._failure("API call failed", exc) from None
         except Exception as exc:
-            logger.error(
-                "Claude provider unexpected error [%s]: %s", type(exc).__name__, exc
-            )
-            raise ProviderError(f"Claude provider error: {exc}") from exc
+            raise self._failure("API call failed", exc) from None
 
         latency_ms = int((time.monotonic() - start) * 1000)
         text = response.content[0].text if response.content else ""
@@ -98,7 +104,7 @@ class ClaudeProvider(AIProvider):
         return AIResponse(
             text=text,
             tokens_used=input_tokens + output_tokens,
-            model=self._model,
+            model=self.model,
             provider=self.name,
             latency_ms=latency_ms,
             input_tokens=input_tokens,
@@ -112,15 +118,11 @@ class ClaudeProvider(AIProvider):
         temperature: float = 0.9,
         max_tokens: int = 200,
     ):
-        if self._client is None:
-            raise ProviderError(
-                f"Claude provider unavailable: {self._unavailable_reason}"
-            )
-
+        client = self._require_client()
         anthropic = self._anthropic
         try:
-            with self._client.messages.stream(
-                model=self._model,
+            with client.messages.stream(
+                model=self.model,
                 max_tokens=max_tokens,
                 temperature=temperature,
                 system=system_prompt,
@@ -135,27 +137,21 @@ class ClaudeProvider(AIProvider):
                     output_tokens=usage.output_tokens,
                 )
         except anthropic.BadRequestError as exc:
-            if "content filtering" in str(exc).lower() or "blocked" in str(exc).lower():
-                logger.warning("Claude content filter triggered: %s", exc)
+            if self._is_content_filter(exc):
+                logger.warning("%s content filter triggered", self.name)
                 raise ContentFilterError(
-                    f"Claude content filter blocked response: {exc}"
-                ) from exc
-            raise ProviderError(f"Claude streaming failed: {exc}") from exc
-        except anthropic.APIError as exc:
-            logger.error("Claude streaming error [%s]: %s", type(exc).__name__, exc)
-            raise ProviderError(f"Claude streaming failed: {exc}") from exc
+                    f"{self.name} content filter blocked the response"
+                ) from None
+            raise self._failure("streaming failed", exc) from None
         except Exception as exc:
-            logger.error(
-                "Claude streaming unexpected error [%s]: %s", type(exc).__name__, exc
-            )
-            raise ProviderError(f"Claude streaming error: {exc}") from exc
+            raise self._failure("streaming failed", exc) from None
 
     def health_check(self) -> bool:
         if self._client is None:
             return False
         try:
             self._client.messages.create(
-                model=self._model,
+                model=self.model,
                 max_tokens=5,
                 messages=[{"role": "user", "content": "ping"}],
             )

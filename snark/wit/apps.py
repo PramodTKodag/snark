@@ -8,3 +8,7 @@ class WitConfig(AppConfig):
 
     def ready(self):
         from . import signals  # noqa: F401  (registers signal receivers)
+        from .providers import ProviderRegistry
+
+        # Fail closed: an invalid providers file stops startup.
+        ProviderRegistry.load()

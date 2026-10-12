@@ -1,11 +1,15 @@
 import logging
 import time
 
-from django.conf import settings
+import httpx
 
-from .base import AIProvider, AIResponse, ContentFilterError, ProviderError, StreamUsage
+from .base import AIResponse, ContentFilterError, StreamUsage
+from .config import ProviderSpec
+from .spec_backed import SpecBackedProvider
 
 logger = logging.getLogger(__name__)
+
+API_BASE_URL = "https://generativelanguage.googleapis.com/"
 
 # Gemini candidate finish reasons that indicate a safety/content block.
 _GEMINI_SAFETY_FINISH = {
@@ -17,45 +21,50 @@ _GEMINI_SAFETY_FINISH = {
 }
 
 
-class GeminiProvider(AIProvider):
-    """Google Gemini provider (new google-genai SDK)."""
+class GeminiProvider(SpecBackedProvider):
+    """Google Gemini provider (google-genai SDK), built from a ``ProviderSpec``.
 
-    def __init__(self, api_key: str | None = None, model: str | None = None):
-        self._client = None
-        self._unavailable_reason: str | None = None
+    The caller resolves the API key. The key and ``API_BASE_URL`` are the only
+    credential and endpoint used; ambient Google settings (Vertex AI, API keys,
+    proxies, CA bundles) are suppressed.
+    """
+
+    def __init__(self, spec: ProviderSpec, api_key: str):
+        super().__init__(spec, api_key)
 
         try:
             from google import genai
         except ImportError:
             self._unavailable_reason = "google-genai package not installed"
-            logger.warning("GeminiProvider unavailable: %s", self._unavailable_reason)
+            logger.warning(
+                "Provider %s unavailable: %s", spec.name, self._unavailable_reason
+            )
             return
 
-        self._api_key = (
-            api_key if api_key is not None else getattr(settings, "GEMINI_API_KEY", "")
-        )
-        self._model_name = model or getattr(
-            settings, "GEMINI_MODEL", "gemini-2.0-flash"
-        )
-
-        if not self._api_key:
-            self._unavailable_reason = "no API key (set GEMINI_API_KEY)"
-            logger.warning("GeminiProvider unavailable: %s", self._unavailable_reason)
+        if not api_key:
+            self._unavailable_reason = f"no API key (set {spec.key_env})"
             return
 
-        self._client = genai.Client(api_key=self._api_key)
-        logger.info("GeminiProvider ready: model=%s", self._model_name)
+        from google.genai import types
 
-    @property
-    def name(self) -> str:
-        return "gemini"
-
-    @property
-    def model(self) -> str:
-        return self._model_name
-
-    def is_available(self) -> bool:
-        return self._client is not None
+        ca_context = httpx.create_ssl_context(trust_env=False)
+        self._client = genai.Client(
+            api_key=api_key,
+            # Explicit False: otherwise GOOGLE_GENAI_USE_VERTEXAI switches the
+            # client to Vertex AI and ambient project credentials.
+            vertexai=False,
+            http_options=types.HttpOptions(
+                base_url=API_BASE_URL,
+                # Requests carry prompts and the API key: never follow redirects
+                # and never route through proxies or CA bundles from the environment.
+                httpx_client=httpx.Client(follow_redirects=False, trust_env=False),
+                # The SDK reads SSL_CERT_FILE/SSL_CERT_DIR unless it is handed
+                # a context, so pin the bundled CA store.
+                client_args={"verify": ca_context},
+                async_client_args={"ssl": ca_context},
+            ),
+        )
+        logger.info("Provider %s ready: model=%s", spec.name, spec.model)
 
     def _safety_settings(self):
         """Gemini 2.5/3 default safety thresholds are effectively OFF, so set
@@ -83,17 +92,14 @@ class GeminiProvider(AIProvider):
         temperature: float = 0.9,
         max_tokens: int = 200,
     ) -> AIResponse:
-        if self._client is None:
-            raise ProviderError(
-                f"Gemini provider unavailable: {self._unavailable_reason}"
-            )
+        client = self._require_client()
 
         from google.genai import types
 
         start = time.monotonic()
         try:
-            response = self._client.models.generate_content(
-                model=self._model_name,
+            response = client.models.generate_content(
+                model=self.model,
                 contents=user_prompt,
                 config=types.GenerateContentConfig(
                     system_instruction=system_prompt,
@@ -103,8 +109,7 @@ class GeminiProvider(AIProvider):
                 ),
             )
         except Exception as exc:
-            logger.error("Gemini API error [%s]: %s", type(exc).__name__, exc)
-            raise ProviderError(f"Gemini API call failed: {exc}") from exc
+            raise self._failure("API call failed", exc) from None
 
         self._raise_if_blocked(response)
 
@@ -124,7 +129,7 @@ class GeminiProvider(AIProvider):
         return AIResponse(
             text=text,
             tokens_used=input_tokens + output_tokens,
-            model=self._model_name,
+            model=self.model,
             provider=self.name,
             latency_ms=latency_ms,
             input_tokens=input_tokens,
@@ -138,16 +143,13 @@ class GeminiProvider(AIProvider):
         temperature: float = 0.9,
         max_tokens: int = 200,
     ):
-        if self._client is None:
-            raise ProviderError(
-                f"Gemini provider unavailable: {self._unavailable_reason}"
-            )
+        client = self._require_client()
 
         from google.genai import types
 
         try:
-            stream = self._client.models.generate_content_stream(
-                model=self._model_name,
+            stream = client.models.generate_content_stream(
+                model=self.model,
                 contents=user_prompt,
                 config=types.GenerateContentConfig(
                     system_instruction=system_prompt,
@@ -174,8 +176,7 @@ class GeminiProvider(AIProvider):
         except ContentFilterError:
             raise
         except Exception as exc:
-            logger.error("Gemini streaming error [%s]: %s", type(exc).__name__, exc)
-            raise ProviderError(f"Gemini streaming failed: {exc}") from exc
+            raise self._failure("streaming failed", exc) from None
 
     @staticmethod
     def _raise_if_blocked(response) -> None:
@@ -201,7 +202,7 @@ class GeminiProvider(AIProvider):
             return False
         try:
             self._client.models.generate_content(
-                model=self._model_name,
+                model=self.model,
                 contents="ping",
             )
             return True

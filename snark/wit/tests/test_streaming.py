@@ -6,8 +6,9 @@ from rest_framework.test import APIClient
 from wit.models import ResponseLog
 from wit.providers.base import AIProvider, AIResponse, StreamUsage
 from wit.providers.claude_provider import ClaudeProvider
+from wit.providers.config import ProviderSpec, ProviderType
 from wit.providers.gemini_provider import GeminiProvider
-from wit.providers.groq_provider import GroqProvider
+from wit.providers.openai_compatible import OpenAICompatibleProvider
 from wit.services import WitService
 
 
@@ -56,14 +57,28 @@ class _CtxManager:
         return False
 
 
+def _spec(provider_type, name):
+    return ProviderSpec(
+        name=name,
+        type=provider_type,
+        model="m",
+        key_env=f"{name.upper()}_API_KEY",
+        url=(
+            "https://llm.example.test/v1"
+            if provider_type is ProviderType.OPENAI_COMPATIBLE
+            else None
+        ),
+    )
+
+
 class TestProviderStreamUsage:
     """Each fake accepts ONLY the kwargs the provider actually passes, so an
     unexpected/renamed kwarg raises TypeError like the real SDK would. This
     closes the gap that let the ``stream_options`` break (#70) pass CI — the
     prior permissive MagicMocks accepted any kwarg."""
 
-    @patch("groq.Groq")
-    def test_groq_stream_yields_deltas_then_usage(self, mock_cls):
+    @patch("openai.OpenAI")
+    def test_openai_compatible_stream_yields_deltas_then_usage(self, mock_cls):
         client = MagicMock()
         mock_cls.return_value = client
         c1 = MagicMock(
@@ -80,21 +95,31 @@ class TestProviderStreamUsage:
         )
 
         def fake_create(
-            *, model, max_tokens, temperature, messages, stream, extra_body
+            *,
+            model,
+            max_tokens,
+            temperature,
+            messages,
+            stream,
+            stream_options,
+            extra_body,
         ):
-            # A bare `stream_options=` kwarg (the #70 bug) raises TypeError here.
-            return iter([c1, c2, usage_chunk])
+            # An unexpected kwarg raises TypeError here, like the real SDK.
+            stream = MagicMock()
+            stream.__enter__.return_value = iter([c1, c2, usage_chunk])
+            return stream
 
         client.chat.completions.create.side_effect = fake_create
 
-        out = list(GroqProvider(api_key="k", model="m").generate_stream("s", "u"))
+        provider = OpenAICompatibleProvider(
+            _spec(ProviderType.OPENAI_COMPATIBLE, "groq"), "k"
+        )
+        out = list(provider.generate_stream("s", "u"))
 
         assert [o for o in out if isinstance(o, str)] == ["No", " thanks"]
         assert out[-1] == StreamUsage(input_tokens=11, output_tokens=4)
-        # Regression (#70): usage is forwarded via extra_body, not a raw kwarg.
         call_kwargs = client.chat.completions.create.call_args.kwargs
-        assert "stream_options" not in call_kwargs
-        assert call_kwargs["extra_body"] == {"stream_options": {"include_usage": True}}
+        assert call_kwargs["stream_options"] == {"include_usage": True}
 
     @patch("anthropic.Anthropic")
     def test_claude_stream_yields_deltas_then_usage(self, mock_cls):
@@ -111,7 +136,11 @@ class TestProviderStreamUsage:
 
         client.messages.stream.side_effect = fake_stream
 
-        out = list(ClaudeProvider(api_key="k", model="m").generate_stream("s", "u"))
+        out = list(
+            ClaudeProvider(_spec(ProviderType.CLAUDE, "claude"), "k").generate_stream(
+                "s", "u"
+            )
+        )
 
         assert [o for o in out if isinstance(o, str)] == ["No", " thanks"]
         assert out[-1] == StreamUsage(input_tokens=9, output_tokens=5)
@@ -135,7 +164,11 @@ class TestProviderStreamUsage:
 
         client.models.generate_content_stream.side_effect = fake_stream
 
-        out = list(GeminiProvider(api_key="k", model="m").generate_stream("s", "u"))
+        out = list(
+            GeminiProvider(_spec(ProviderType.GEMINI, "gemini"), "k").generate_stream(
+                "s", "u"
+            )
+        )
 
         assert [o for o in out if isinstance(o, str)] == ["No", " thanks"]
         assert out[-1] == StreamUsage(input_tokens=20, output_tokens=6)
@@ -212,9 +245,8 @@ class TestServiceStreaming:
     @patch("wit.services.ProviderRegistry")
     @patch("wit.services.cache")
     def test_stream_emits_generation_log(
-        self, mock_cache, mock_registry, persona_no, settings, caplog
+        self, mock_cache, mock_registry, persona_no, claude_priced_providers, caplog
     ):
-        settings.PROVIDER_TOKEN_COST = "claude:1:3"
         mock_cache.get.return_value = None
         provider = MagicMock()
         provider.name = "claude"

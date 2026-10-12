@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 from wit.providers.config import (
     ProviderConfigError,
+    ProviderSpec,
     ProviderType,
     _build_extra_body,
     load_providers_config,
@@ -380,3 +381,34 @@ def test_sentinel_values_never_appear_in_any_error(tmp_path):
         message = load_error(tmp_path, text)
         assert "SENTINEL" not in message
         assert "sentinel" not in message
+
+
+class TestProviderSpecInvariants:
+    """Rules hold for any construction path, not only the file loader."""
+
+    @pytest.mark.parametrize("kind", [ProviderType.GEMINI, ProviderType.CLAUDE])
+    def test_native_provider_requires_a_key(self, kind):
+        with pytest.raises(ProviderConfigError):
+            ProviderSpec(name="native", type=kind, model="m")
+
+    def test_free_is_only_for_keyless_providers(self):
+        with pytest.raises(ProviderConfigError):
+            ProviderSpec(
+                name="p",
+                type=ProviderType.OPENAI_COMPATIBLE,
+                model="m",
+                url="https://llm.example.test/v1",
+                key_env="P_API_KEY",
+                free=True,
+            )
+
+    def test_free_and_price_are_mutually_exclusive(self):
+        with pytest.raises(ProviderConfigError):
+            ProviderSpec(
+                name="p",
+                type=ProviderType.OPENAI_COMPATIBLE,
+                model="m",
+                url="http://localhost:11434/v1",
+                free=True,
+                price=(1.0, 2.0),
+            )

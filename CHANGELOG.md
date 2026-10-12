@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Default Groq model is now `openai/gpt-oss-20b` (the previous default was retired by Groq); the provider sends `reasoning_effort` for reasoning models and transparently retries without it for models that don't support it
+- Claude: a bad-request error is now treated as a content filter only when it mentions content filtering; the previous match on "blocked" could turn an unrelated 400 (for example an oversized prompt) into a content-filter fallback
 
 ### Security
 
