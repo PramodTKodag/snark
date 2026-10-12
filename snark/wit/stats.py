@@ -1,13 +1,12 @@
 """Read-only aggregation helpers for the /stats endpoint and admin dashboard.
 
 Single source of truth for usage numbers so the API and the admin never drift.
-Provider status/cost are derived from settings/env only — no DB-backed provider
+Provider status/cost are derived from the providers file/env only — no DB-backed provider
 config. Every function here is a read-only query; none mutate state.
 """
 
 from datetime import timedelta
 
-from django.conf import settings
 from django.db.models import Avg, Count, Max, Sum
 from django.db.models.functions import TruncDate
 from django.utils import timezone
@@ -246,20 +245,18 @@ def provider_status() -> list:
     """Which providers are configured, in fallback order, default flagged."""
     from .providers import ProviderRegistry
 
-    default = getattr(settings, "AI_DEFAULT_PROVIDER", "groq")
-    order = list(getattr(settings, "AI_PROVIDER_FALLBACK_ORDER", ["groq"]))
+    default = ProviderRegistry.default_name
+    order = ProviderRegistry.fallback_names
     if default not in order:
         order.append(default)
-    result = []
-    for name in order:
-        try:
-            configured = ProviderRegistry.get(name).is_available()
-        except Exception:
-            configured = False
-        result.append(
-            {"name": name, "configured": configured, "is_default": name == default}
-        )
-    return result
+    return [
+        {
+            "name": name,
+            "configured": ProviderRegistry.get(name).is_available(),
+            "is_default": name == default,
+        }
+        for name in order
+    ]
 
 
 def system_health() -> dict:

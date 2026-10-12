@@ -1,7 +1,7 @@
 from .base import AIProvider, AIResponse, ContentFilterError, ProviderError
 from .claude_provider import ClaudeProvider
 from .gemini_provider import GeminiProvider
-from .groq_provider import GroqProvider
+from .openai_compatible import OpenAICompatibleProvider
 from .registry import ProviderRegistry
 
 __all__ = [
@@ -11,6 +11,6 @@ __all__ = [
     "ProviderError",
     "ClaudeProvider",
     "GeminiProvider",
-    "GroqProvider",
+    "OpenAICompatibleProvider",
     "ProviderRegistry",
 ]

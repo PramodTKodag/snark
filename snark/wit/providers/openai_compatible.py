@@ -39,9 +39,6 @@ class OpenAICompatibleProvider(AIProvider):
 
         if spec.key_env and not api_key:
             self._unavailable_reason = f"no API key (set {spec.key_env})"
-            logger.warning(
-                "Provider %s unavailable: %s", spec.name, self._unavailable_reason
-            )
             return
 
         bearer_key = api_key or KEYLESS_PLACEHOLDER_API_KEY

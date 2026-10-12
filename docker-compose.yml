@@ -60,6 +60,8 @@ services:
       - .:/app
     env_file:
       - ./.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       snark-postgres:
         condition: service_healthy
@@ -84,6 +86,8 @@ services:
       - "${WIT_PORT:-8100}:${INTERNAL_PORT:-8094}"
     env_file:
       - ./.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       snark-postgres:
         condition: service_healthy

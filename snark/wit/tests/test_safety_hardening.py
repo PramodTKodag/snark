@@ -60,9 +60,16 @@ class TestGenerateSpotlights:
 class TestGeminiSafetySettings:
     def test_block_only_high_on_all_categories(self):
         from google.genai import types
+        from wit.providers.config import ProviderSpec, ProviderType
         from wit.providers.gemini_provider import GeminiProvider
 
-        settings = GeminiProvider()._safety_settings()
+        spec = ProviderSpec(
+            name="gemini",
+            type=ProviderType.GEMINI,
+            model="m",
+            key_env="GEMINI_API_KEY",
+        )
+        settings = GeminiProvider(spec, "")._safety_settings()
         assert len(settings) == 4
         assert all(
             s.threshold == types.HarmBlockThreshold.BLOCK_ONLY_HIGH for s in settings

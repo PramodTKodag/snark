@@ -41,6 +41,20 @@ def _disable_ssl_redirect(settings):
     settings.SECURE_SSL_REDIRECT = False
 
 
+@pytest.fixture(autouse=True)
+def _reset_provider_registry():
+    """Drop loaded providers around every test.
+
+    The registry caches providers built from the providers file and the process
+    environment; resetting keeps tests that override either from leaking.
+    """
+    from wit.providers import ProviderRegistry
+
+    ProviderRegistry.reset()
+    yield
+    ProviderRegistry.reset()
+
+
 @pytest.fixture
 def api_client():
     return APIClient()

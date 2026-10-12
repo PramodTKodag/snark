@@ -1,0 +1,33 @@
+# AI providers. `default` answers requests; `fallback` is tried in order when it
+# fails. API keys are never written here: `key` names the environment variable
+# that holds the key. Keyless providers (a local Ollama) omit `key`.
+# Switch providers by editing `default:`, then restart.
+default: groq
+fallback: [groq, gemini, claude]
+
+providers:
+  groq:
+    type: openai_compatible
+    url: https://api.groq.com/openai/v1
+    key: GROQ_API_KEY
+    model: openai/gpt-oss-20b
+    # Sent verbatim in every request body. Reasoning models spend part of the
+    # token budget thinking; "low" keeps the answer inside the persona budget.
+    extra_body:
+      reasoning_effort: low
+
+  ollama:
+    type: openai_compatible
+    url: http://host.docker.internal:11434/v1
+    model: gemma3:27b
+    free: true
+
+  gemini:
+    type: gemini
+    key: GEMINI_API_KEY
+    model: gemini-2.0-flash
+
+  claude:
+    type: claude
+    key: ANTHROPIC_API_KEY
+    model: claude-haiku-4-5-20251001
