@@ -231,7 +231,7 @@ class TestGeminiProvider:
         assert provider.model == "test-gemini-model"
         assert result.provider == "gemini-pro"
         assert result.model == "test-gemini-model"
-        assert mock_client_cls.call_args.kwargs == {"api_key": "test-key"}
+        assert mock_client_cls.call_args.kwargs["api_key"] == "test-key"
         assert mock_client.models.generate_content.call_args.kwargs["model"] == (
             "test-gemini-model"
         )
@@ -513,3 +513,61 @@ class TestContentFilterDetection:
         provider = GeminiProvider(gemini_spec(), "test-key")
         with pytest.raises(ContentFilterError):
             provider.generate("system", "user")
+
+
+class TestNativeClientsIgnoreAmbientEnvironment:
+    def test_claude_client_ignores_base_url_headers_proxy_and_ca(self, monkeypatch):
+        monkeypatch.setenv("ANTHROPIC_BASE_URL", "https://env.example.test")
+        monkeypatch.setenv("ANTHROPIC_AUTH_TOKEN", "sk-ENV-TOKEN")
+        monkeypatch.setenv(
+            "ANTHROPIC_CUSTOM_HEADERS", "X-Env-Injected: leaked\nX-Other: leaked"
+        )
+        monkeypatch.setenv("HTTPS_PROXY", "http://proxy.example.test:3128")
+        monkeypatch.setenv("SSL_CERT_FILE", "/nonexistent/ca.pem")
+
+        client = ClaudeProvider(claude_spec(), API_KEY)._client
+
+        assert client.base_url.host == "api.anthropic.com"
+        assert not client._client._mounts
+        headers = client.default_headers
+        assert "x-env-injected" not in headers
+        assert "x-other" not in headers
+        assert "sk-ENV-TOKEN" not in str(headers)
+        assert client.auth_headers["X-Api-Key"] == API_KEY
+
+    def test_claude_client_does_not_follow_redirects(self):
+        client = ClaudeProvider(claude_spec(), API_KEY)._client
+
+        assert client._client.follow_redirects is False
+
+    @patch("google.genai.Client")
+    def test_gemini_client_is_pinned_to_explicit_options(
+        self, mock_client_cls, monkeypatch
+    ):
+        monkeypatch.setenv("GOOGLE_GENAI_USE_VERTEXAI", "true")
+
+        GeminiProvider(gemini_spec(), API_KEY)
+
+        kwargs = mock_client_cls.call_args.kwargs
+        assert kwargs["api_key"] == API_KEY
+        assert kwargs["vertexai"] is False
+        options = kwargs["http_options"]
+        assert options.base_url == "https://generativelanguage.googleapis.com/"
+        assert options.httpx_client.trust_env is False
+        assert options.httpx_client.follow_redirects is False
+
+    def test_gemini_real_client_ignores_env_key_vertex_and_ca(self, monkeypatch):
+        monkeypatch.setenv("GOOGLE_API_KEY", "sk-ENV-GOOGLE")
+        monkeypatch.setenv("GEMINI_API_KEY", "sk-ENV-GEMINI")
+        monkeypatch.setenv("GOOGLE_GENAI_USE_VERTEXAI", "true")
+        monkeypatch.setenv("SSL_CERT_FILE", "/nonexistent/ca.pem")
+
+        client = GeminiProvider(gemini_spec(), API_KEY)._client
+
+        api = client._api_client
+        assert api.vertexai is False
+        assert api.api_key == API_KEY
+        assert (
+            api._http_options.base_url == "https://generativelanguage.googleapis.com/"
+        )
+        assert not api._httpx_client._mounts

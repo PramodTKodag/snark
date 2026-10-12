@@ -71,7 +71,11 @@ def use_providers_file(tmp_path, settings):
 
 @pytest.fixture
 def claude_priced_providers(use_providers_file):
-    """A providers file where `claude` costs $1 in / $3 out per 1M tokens."""
+    """A providers file where `claude` costs $1 in / $3 out per 1M tokens.
+
+    Only the name and price matter to the pricing tests, so the entry is a
+    generic `openai_compatible` one rather than the native Claude adapter.
+    """
     use_providers_file("""\
 default: claude
 fallback: [claude]

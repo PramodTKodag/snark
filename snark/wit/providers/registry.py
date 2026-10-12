@@ -61,7 +61,7 @@ class _ProviderRegistry:
         self._loaded = _LoadedProviders(config=config, instances=instances)
 
     def reset(self) -> None:
-        """Drop loaded providers (used in tests and after settings overrides)."""
+        """Drop loaded providers (used in tests)."""
         with self._lock:
             self._loaded = None
 

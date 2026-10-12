@@ -191,10 +191,11 @@ class TestHasPricing:
         monkeypatch.setattr(pricing, "_price_map", lambda: NO_VENDORED_PRICES)
         assert pricing.has_pricing() is True
 
-    def test_true_with_only_a_free_provider(self, monkeypatch, use_providers_file):
+    def test_false_with_only_a_free_provider(self, monkeypatch, use_providers_file):
+        """A free provider is a known zero, not a source of pricing data."""
         use_providers_file(FREE_ONLY_FILE)
         monkeypatch.setattr(pricing, "_price_map", lambda: NO_VENDORED_PRICES)
-        assert pricing.has_pricing() is True
+        assert pricing.has_pricing() is False
 
     def test_false_when_nothing_is_priced(self, monkeypatch, use_providers_file):
         use_providers_file(UNPRICED_FILE)

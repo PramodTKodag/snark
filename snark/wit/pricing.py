@@ -1,7 +1,7 @@
 """Per-model token pricing for the cost estimate.
 
 A provider's `price` or `free` setting in the AI providers file wins, so
-operators can set or correct prices without a redeploy. Otherwise rates come
+operators can set or correct prices by editing the file and restarting. Otherwise rates come
 from a vendored copy of LiteLLM's community-maintained pricing map
 (pricing_data.json, MIT-licensed, refreshable via `manage.py update_pricing`).
 All rates are dollars per single token.
@@ -58,6 +58,5 @@ def request_cost(
 
 def has_pricing() -> bool:
     return bool(_price_map()) or any(
-        spec.free or spec.price is not None
-        for spec in ProviderRegistry.specs().values()
+        spec.price is not None for spec in ProviderRegistry.specs().values()
     )

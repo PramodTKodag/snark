@@ -1,13 +1,11 @@
 import copy
 import logging
-import os
 import time
 from collections.abc import Iterator
 
 import openai
 
 from .base import (
-    AIProvider,
     AIResponse,
     ContentFilterError,
     ProviderError,
@@ -15,6 +13,7 @@ from .base import (
     safe_error_summary,
 )
 from .config import ProviderSpec
+from .spec_backed import SpecBackedProvider, ambient_header_names
 
 logger = logging.getLogger(__name__)
 
@@ -26,21 +25,7 @@ MAX_RETRIES = 2
 CUSTOM_HEADERS_ENV = "OPENAI_CUSTOM_HEADERS"
 
 
-def _ambient_header_names() -> list[str]:
-    """Header names the SDK would add from ``OPENAI_CUSTOM_HEADERS``.
-
-    Parsed the way the SDK does (one ``Name: value`` per line) so each can be
-    omitted explicitly; ``Authorization`` is pinned separately.
-    """
-    names = []
-    for line in os.environ.get(CUSTOM_HEADERS_ENV, "").split("\n"):
-        name = line[: line.find(":")].strip() if ":" in line else ""
-        if name and name.lower() != "authorization":
-            names.append(name)
-    return names
-
-
-class OpenAICompatibleProvider(AIProvider):
+class OpenAICompatibleProvider(SpecBackedProvider):
     """Chat-completions provider for any OpenAI-compatible endpoint.
 
     Serves Groq, Ollama, OpenRouter, vLLM and the like from a ``ProviderSpec``.
@@ -49,10 +34,7 @@ class OpenAICompatibleProvider(AIProvider):
     """
 
     def __init__(self, spec: ProviderSpec, api_key: str):
-        self._spec = spec
-        self._api_key = api_key
-        self._client: openai.OpenAI | None = None
-        self._unavailable_reason: str | None = None
+        super().__init__(spec, api_key)
 
         if spec.key_env and not api_key:
             self._unavailable_reason = f"no API key (set {spec.key_env})"
@@ -68,7 +50,10 @@ class OpenAICompatibleProvider(AIProvider):
                 # The SDK adds these from OPENAI_ORG_ID / OPENAI_PROJECT_ID and
                 # OPENAI_CUSTOM_HEADERS unless told to omit them; Omit() keeps
                 # the environment off the wire.
-                **{name: openai.Omit() for name in _ambient_header_names()},
+                **{
+                    name: openai.Omit()
+                    for name in ambient_header_names(CUSTOM_HEADERS_ENV)
+                },
                 "OpenAI-Organization": openai.Omit(),
                 "OpenAI-Project": openai.Omit(),
                 # An explicit header makes the SDK discard any Authorization
@@ -82,29 +67,6 @@ class OpenAICompatibleProvider(AIProvider):
             ),
         )
         logger.info("Provider %s ready: model=%s", spec.name, spec.model)
-
-    @property
-    def name(self) -> str:
-        return self._spec.name
-
-    @property
-    def model(self) -> str:
-        return self._spec.model
-
-    def is_available(self) -> bool:
-        return self._client is not None
-
-    def _require_client(self) -> openai.OpenAI:
-        if self._client is None:
-            raise ProviderError(
-                f"{self.name} provider unavailable: {self._unavailable_reason}"
-            )
-        return self._client
-
-    def _failure(self, action: str, exc: Exception) -> ProviderError:
-        summary = safe_error_summary(exc, [self._api_key])
-        logger.error("%s %s: %s", self.name, action, summary)
-        return ProviderError(f"{self.name} {action}: {summary}")
 
     def _request_kwargs(
         self, system_prompt: str, user_prompt: str, temperature: float, max_tokens: int

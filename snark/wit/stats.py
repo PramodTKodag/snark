@@ -1,8 +1,8 @@
 """Read-only aggregation helpers for the /stats endpoint and admin dashboard.
 
 Single source of truth for usage numbers so the API and the admin never drift.
-Provider status/cost are derived from the providers file/env only — no DB-backed provider
-config. Every function here is a read-only query; none mutate state.
+Provider status/cost are derived from the providers file/env only — no DB-backed
+provider config. Every function here is a read-only query; none mutate state.
 """
 
 from datetime import timedelta
@@ -282,8 +282,8 @@ def cost_estimate() -> dict:
 
     Rates are resolved per (provider, model) group from the provider's `price`/
     `free` in the providers file, else the vendored pricing map, then rolled up
-    to per-provider totals for display. Streamed and non-streamed responses both log split
-    token usage, so both contribute to the estimate.
+    to per-provider totals for display. Streamed and non-streamed responses both
+    log split token usage, so both contribute to the estimate.
     """
     rows = ResponseLog.objects.values("provider_name", "model_name").annotate(
         input_tokens=Sum("input_tokens"),

@@ -1,30 +1,28 @@
 import logging
 import time
 
-from .base import (
-    AIProvider,
-    AIResponse,
-    ContentFilterError,
-    ProviderError,
-    StreamUsage,
-    safe_error_summary,
-)
+import httpx
+
+from .base import AIResponse, ContentFilterError, StreamUsage
 from .config import ProviderSpec
+from .spec_backed import SpecBackedProvider, ambient_header_names
 
 logger = logging.getLogger(__name__)
 
+API_BASE_URL = "https://api.anthropic.com"
+CUSTOM_HEADERS_ENV = "ANTHROPIC_CUSTOM_HEADERS"
 
-class ClaudeProvider(AIProvider):
+
+class ClaudeProvider(SpecBackedProvider):
     """Anthropic Claude provider, built from a ``ProviderSpec``.
 
-    The caller resolves the API key; this class never reads the environment.
+    The caller resolves the API key. The key and ``API_BASE_URL`` are the only
+    credential and endpoint used; ambient ``ANTHROPIC_*`` settings, proxies and
+    CA bundles are suppressed.
     """
 
     def __init__(self, spec: ProviderSpec, api_key: str):
-        self._spec = spec
-        self._api_key = api_key
-        self._client = None
-        self._unavailable_reason: str | None = None
+        super().__init__(spec, api_key)
 
         try:
             import anthropic
@@ -41,27 +39,34 @@ class ClaudeProvider(AIProvider):
             self._unavailable_reason = f"no API key (set {spec.key_env})"
             return
 
-        self._client = anthropic.Anthropic(api_key=api_key)
+        self._client = anthropic.Anthropic(
+            api_key=api_key,
+            base_url=API_BASE_URL,
+            default_headers={
+                # The SDK adds these from ANTHROPIC_CUSTOM_HEADERS unless told
+                # to omit them; Omit() keeps the environment off the wire.
+                **{
+                    name: anthropic.Omit()
+                    for name in ambient_header_names(CUSTOM_HEADERS_ENV)
+                },
+                "Authorization": anthropic.Omit(),
+            },
+            # Requests carry prompts and the API key: never follow redirects
+            # and never route through proxies or CA bundles from the environment.
+            # An explicit transport stops the SDK from reading proxies out of
+            # the environment (it ignores trust_env for that).
+            http_client=anthropic.DefaultHttpxClient(
+                transport=httpx.HTTPTransport(
+                    trust_env=False, limits=anthropic.DEFAULT_CONNECTION_LIMITS
+                ),
+                follow_redirects=False,
+                trust_env=False,
+            ),
+        )
         logger.info("Provider %s ready: model=%s", spec.name, spec.model)
-
-    @property
-    def name(self) -> str:
-        return self._spec.name
-
-    @property
-    def model(self) -> str:
-        return self._spec.model
-
-    def _failure(self, action: str, exc: Exception) -> ProviderError:
-        summary = safe_error_summary(exc, [self._api_key])
-        logger.error("%s %s: %s", self.name, action, summary)
-        return ProviderError(f"{self.name} {action}: {summary}")
 
     def _is_content_filter(self, exc: Exception) -> bool:
         return "content filtering" in str(exc).lower()
-
-    def is_available(self) -> bool:
-        return self._client is not None
 
     def generate(
         self,
@@ -70,15 +75,11 @@ class ClaudeProvider(AIProvider):
         temperature: float = 0.9,
         max_tokens: int = 200,
     ) -> AIResponse:
-        if self._client is None:
-            raise ProviderError(
-                f"{self.name} provider unavailable: {self._unavailable_reason}"
-            )
-
+        client = self._require_client()
         anthropic = self._anthropic
         start = time.monotonic()
         try:
-            response = self._client.messages.create(
+            response = client.messages.create(
                 model=self.model,
                 max_tokens=max_tokens,
                 temperature=temperature,
@@ -117,14 +118,10 @@ class ClaudeProvider(AIProvider):
         temperature: float = 0.9,
         max_tokens: int = 200,
     ):
-        if self._client is None:
-            raise ProviderError(
-                f"{self.name} provider unavailable: {self._unavailable_reason}"
-            )
-
+        client = self._require_client()
         anthropic = self._anthropic
         try:
-            with self._client.messages.stream(
+            with client.messages.stream(
                 model=self.model,
                 max_tokens=max_tokens,
                 temperature=temperature,
