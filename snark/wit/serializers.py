@@ -121,6 +121,10 @@ class StatsResponseSerializer(serializers.Serializer):
     personas = PersonaStatSerializer(many=True)
 
 
+class ProbeStatusSerializer(serializers.Serializer):
+    status = serializers.CharField()
+
+
 class HealthResponseSerializer(serializers.Serializer):
     status = serializers.CharField()
     timestamp = serializers.DateTimeField()
