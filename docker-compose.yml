@@ -168,14 +168,12 @@ services:
     container_name: snark-prometheus
     environment:
       METRICS_AUTH_TOKEN: ${METRICS_AUTH_TOKEN:-}
-      INTERNAL_PORT: ${INTERNAL_PORT:-8094}
     entrypoint:
       - /bin/sh
       - -c
       - >
         printf '%s' "$${METRICS_AUTH_TOKEN}" > /tmp/metrics-token &&
-        sed "s/\$${INTERNAL_PORT}/$${INTERNAL_PORT}/" /etc/prometheus/prometheus.yml > /tmp/prometheus.yml &&
-        exec /bin/prometheus --config.file=/tmp/prometheus.yml
+        exec /bin/prometheus --config.file=/etc/prometheus/prometheus.yml
         --storage.tsdb.retention.time=15d
     volumes:
       - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
