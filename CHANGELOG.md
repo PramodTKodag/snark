@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-13
+
+### Changed
+
+- API docs (Swagger/ReDoc) endpoints are grouped into six described categories (Roasts & Verdicts, Excuses & Replies, Developer Humor, Life & Fun, Personas & Discovery, Health) instead of one large `Wit` group
+- The Dockerfile now reads `INTERNAL_PORT` (default 8094) for `EXPOSE` and the gunicorn bind, matching `docker-compose.yml`
+
+### Fixed
+
+- Liveness and readiness probes now document their response body, removing the "unable to guess serializer" errors during schema generation
+
 ## [0.4.0] - 2026-10-13
 
 ### Added
@@ -89,6 +100,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Docker setup with dev and prod profiles
 - CI pipeline with linting (Black, isort, Flake8) and testing (pytest)
 
+[0.4.1]: https://github.com/PramodTKodag/snark/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/PramodTKodag/snark/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/PramodTKodag/snark/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/PramodTKodag/snark/compare/v0.1.0...v0.2.0
