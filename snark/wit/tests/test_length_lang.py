@@ -44,7 +44,11 @@ class TestPromptAndCacheKey:
 class TestLengthOverridesMaxTokens:
     @patch("wit.services.ProviderRegistry")
     @patch("wit.services.cache")
-    def test_length_sets_max_tokens(self, mock_cache, mock_registry, persona_no):
+    def test_length_sets_max_tokens(
+        self, mock_cache, mock_registry, persona_no, settings
+    ):
+        # Pin the floor so a local .env value cannot raise the budget.
+        settings.PERSONA_MAX_TOKENS_FLOOR = 0
         mock_cache.get.return_value = None
         provider = MagicMock()
         provider.name = "groq"

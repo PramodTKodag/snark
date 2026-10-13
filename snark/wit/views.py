@@ -70,6 +70,7 @@ from .serializers import (
     HealthResponseSerializer,
     MoodsResponseSerializer,
     PersonaListItemSerializer,
+    ProbeStatusSerializer,
     ReplyRequestSerializer,
     RoastUrlQuerySerializer,
     StatsResponseSerializer,
@@ -1098,7 +1099,11 @@ class BatchView(APIView):
 # ---------------------------------------------------------------------------
 
 
-@extend_schema(tags=["Health"], summary="Liveness probe")
+@extend_schema(
+    tags=["Health"],
+    summary="Liveness probe",
+    responses={200: ProbeStatusSerializer},
+)
 class LivenessView(APIView):
     authentication_classes = []
     permission_classes = []
@@ -1108,7 +1113,11 @@ class LivenessView(APIView):
         return Response({"status": "ok"})
 
 
-@extend_schema(tags=["Health"], summary="Readiness probe")
+@extend_schema(
+    tags=["Health"],
+    summary="Readiness probe",
+    responses={200: ProbeStatusSerializer, 503: ProbeStatusSerializer},
+)
 class ReadinessView(APIView):
     authentication_classes = []
     permission_classes = []
