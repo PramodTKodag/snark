@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-13
+
 ### Added
 
 - `GET /v1/wit/roast-url/` — roast any public URL, backed by an SSRF-hardened fetcher and Open Graph/metadata extraction (with matching CLI `url` command and `snark_roast_url` MCP tool)
@@ -87,6 +89,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Docker setup with dev and prod profiles
 - CI pipeline with linting (Black, isort, Flake8) and testing (pytest)
 
+[0.4.0]: https://github.com/PramodTKodag/snark/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/PramodTKodag/snark/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/PramodTKodag/snark/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/PramodTKodag/snark/releases/tag/v0.1.0
