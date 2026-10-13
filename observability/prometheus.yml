@@ -8,4 +8,6 @@ scrape_configs:
       type: Bearer
       credentials_file: /tmp/metrics-token
     static_configs:
+      # Container-to-container, so it is the container port (INTERNAL_PORT, default
+      # 8094), not the host port (WIT_PORT). Keep in sync if INTERNAL_PORT changes.
       - targets: ["snark:8094"]

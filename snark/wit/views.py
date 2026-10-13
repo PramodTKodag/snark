@@ -307,7 +307,7 @@ _STREAM_PARAM = OpenApiParameter(
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Excuses & Replies"],
     summary="Creative excuse to say no",
     description=SAY_NO_DESC,
     parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
@@ -319,7 +319,7 @@ class SayNoView(BaseWitView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Excuses & Replies"],
     summary="Random excuse generator",
     description=RANDOM_EXCUSE_DESC,
     parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
@@ -331,7 +331,7 @@ class RandomExcuseView(BaseWitView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Developer Humor"],
     summary="Corporate jargon generator",
     description=CORPORATE_JARGON_DESC,
     parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
@@ -343,7 +343,7 @@ class CorporateJargonView(BaseWitView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Developer Humor"],
     summary="Honest git commit message",
     description=COMMIT_MESSAGE_DESC,
     parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
@@ -355,7 +355,7 @@ class CommitMessageView(BaseWitView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Roasts & Verdicts"],
     summary="Spicy hot take on anything",
     description=HOT_TAKE_DESC,
     parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
@@ -367,7 +367,7 @@ class HotTakeView(BaseWitView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Life & Fun"],
     summary="Wholesome compliment",
     description=COMPLIMENT_DESC,
     parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
@@ -379,7 +379,7 @@ class ComplimentView(BaseWitView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Roasts & Verdicts"],
     summary="Who to blame when things go wrong",
     description=BUG_BLAME_DESC,
     parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
@@ -391,7 +391,7 @@ class BugBlameView(BaseWitView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Roasts & Verdicts"],
     summary="Personalized roast",
     description=ROAST_DESC,
     parameters=[
@@ -419,7 +419,7 @@ class RoastView(BaseWitView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Roasts & Verdicts"],
     summary="Is it worth it? Decision oracle",
     description=WORTH_IT_DESC,
     parameters=[
@@ -445,7 +445,7 @@ class WorthItView(BaseWitView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Life & Fun"],
     summary="Explain like I'm 5",
     description=EXPLAIN_LIKE_IM_5_DESC,
     parameters=[
@@ -476,7 +476,7 @@ class ExplainLikeIm5View(BaseWitView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Life & Fun"],
     summary="Clever themed pickup lines",
     description=PICKUP_LINE_DESC,
     parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
@@ -488,7 +488,7 @@ class PickupLineView(BaseWitView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Life & Fun"],
     summary="Social media bio generator",
     description=SOCIAL_BIO_DESC,
     parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
@@ -500,7 +500,7 @@ class SocialBioView(BaseWitView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Life & Fun"],
     summary="Absurd motivational quote",
     description=MOTIVATION_DESC,
     parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
@@ -512,7 +512,7 @@ class MotivationView(BaseWitView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Life & Fun"],
     summary="Fortune cookie wisdom",
     description=FORTUNE_COOKIE_DESC,
     parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
@@ -524,7 +524,7 @@ class FortuneCookieView(BaseWitView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Life & Fun"],
     summary="Absurd name suggestions for anything",
     description=NAME_SUGGESTION_DESC,
     parameters=[
@@ -550,7 +550,7 @@ class NameSuggestionView(BaseWitView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Developer Humor"],
     summary="Brutally honest status update",
     description=STANDUP_UPDATE_DESC,
     parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
@@ -562,7 +562,7 @@ class StandupUpdateView(BaseWitView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Developer Humor"],
     summary="Passive-aggressive peer feedback",
     description=CODE_REVIEW_DESC,
     parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
@@ -574,7 +574,7 @@ class CodeReviewView(BaseWitView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Excuses & Replies"],
     summary="Meeting excuse or fake agenda",
     description=MEETING_EXCUSE_DESC,
     parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
@@ -586,7 +586,7 @@ class MeetingExcuseView(BaseWitView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Developer Humor"],
     summary="Insider vs outsider jargon translator",
     description=JARGON_TRANSLATOR_DESC,
     parameters=[
@@ -612,7 +612,7 @@ class JargonTranslatorView(BaseWitView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Developer Humor"],
     summary="Incident post-mortem generator",
     description=INCIDENT_POSTMORTEM_DESC,
     parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
@@ -629,7 +629,7 @@ class IncidentPostmortemView(BaseWitView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Roasts & Verdicts"],
     summary="Battle judge — anything vs anything",
     description=TECH_BATTLE_DESC,
     parameters=[
@@ -656,7 +656,7 @@ class TechBattleView(BaseWitView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Roasts & Verdicts"],
     summary="Rate anything 1-10",
     description=RATE_ANYTHING_DESC,
     parameters=[
@@ -679,7 +679,7 @@ class RateAnythingView(BaseWitView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Life & Fun"],
     summary="Modern horoscope",
     description=HOROSCOPE_DESC,
     parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
@@ -691,7 +691,7 @@ class HoroscopeView(BaseWitView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Roasts & Verdicts"],
     summary="Brutally honest TL;DR",
     description=TLDR_DESC,
     parameters=[
@@ -718,7 +718,7 @@ class TldrView(BaseWitView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Developer Humor"],
     summary="Absurd interview question",
     description=INTERVIEW_QUESTION_DESC,
     parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
@@ -730,7 +730,7 @@ class InterviewQuestionView(BaseWitView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Developer Humor"],
     summary="Honest changelog entry",
     description=HONEST_CHANGELOG_DESC,
     parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
@@ -742,7 +742,7 @@ class HonestChangelogView(BaseWitView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Developer Humor"],
     summary="Troubleshooting narrator",
     description=DEBUG_STORY_DESC,
     parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
@@ -754,7 +754,7 @@ class DebugStoryView(BaseWitView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Life & Fun"],
     summary="Ancient modern proverb",
     description=PROVERB_DESC,
     parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
@@ -771,7 +771,7 @@ class ProverbView(BaseWitView):
 
 
 @extend_schema(
-    tags=["Meta"],
+    tags=["Personas & Discovery"],
     summary="List all available personas",
     description=PERSONAS_DESC,
     responses={200: PersonaListItemSerializer(many=True)},
@@ -797,7 +797,7 @@ class PersonaListView(APIView):
 
 
 @extend_schema(
-    tags=["Meta"],
+    tags=["Personas & Discovery"],
     summary="List accepted mood values",
     description=MOODS_DESC,
     responses={200: MoodsResponseSerializer},
@@ -812,7 +812,7 @@ class MoodsView(APIView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Personas & Discovery"],
     summary="Random persona — surprise me",
     description=RANDOM_DESC,
     parameters=[_Q_PARAM, _MOOD_PARAM, _LENGTH_PARAM, _LANG_PARAM, _STREAM_PARAM],
@@ -835,7 +835,7 @@ class RandomWitView(BaseWitView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Roasts & Verdicts"],
     summary="Roast a GitHub profile",
     description=ROAST_GITHUB_DESC,
     parameters=[
@@ -878,7 +878,7 @@ class RoastGithubView(BaseWitView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Roasts & Verdicts"],
     summary="Roast any public URL",
     description=ROAST_URL_DESC,
     parameters=[
@@ -945,7 +945,7 @@ class RoastUrlView(BaseWitView):
 
 
 @extend_schema(
-    tags=["Meta"],
+    tags=["Personas & Discovery"],
     summary="Usage statistics",
     description=STATS_DESC,
     responses={200: StatsResponseSerializer},
@@ -967,7 +967,7 @@ class StatsView(APIView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Excuses & Replies"],
     summary="Sarcastic reply to a social post",
     description=REPLY_DESC,
     request=ReplyRequestSerializer,
@@ -1027,7 +1027,7 @@ class ReplyView(APIView):
 
 
 @extend_schema(
-    tags=["Wit"],
+    tags=["Personas & Discovery"],
     summary="Batch — many personas in one request",
     description=BATCH_DESC,
     request=BatchRequestSerializer,
