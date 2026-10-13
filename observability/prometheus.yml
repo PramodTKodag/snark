@@ -1,3 +1,4 @@
+# ${INTERNAL_PORT} is substituted at container start (see docker-compose.yml).
 global:
   scrape_interval: 15s
 
@@ -8,4 +9,4 @@ scrape_configs:
       type: Bearer
       credentials_file: /tmp/metrics-token
     static_configs:
-      - targets: ["snark:8094"]
+      - targets: ["snark:${INTERNAL_PORT}"]

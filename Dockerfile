@@ -21,6 +21,7 @@ RUN mkdir -p /app/staticfiles && cd /app/snark && \
     SECRET_KEY=build-only-key \
     python manage.py collectstatic --noinput
 
-EXPOSE 8094
+ENV INTERNAL_PORT=8094
+EXPOSE ${INTERNAL_PORT}
 
-CMD ["sh", "-c", "cd snark && python manage.py migrate && python manage.py ensure_admin && python manage.py prune_logs && gunicorn base.wsgi:application --bind 0.0.0.0:8094 --workers ${GUNICORN_WORKERS:-2} --threads ${GUNICORN_THREADS:-8} --max-requests 1000 --max-requests-jitter 100 --timeout 120"]
+CMD ["sh", "-c", "cd snark && python manage.py migrate && python manage.py ensure_admin && python manage.py prune_logs && gunicorn base.wsgi:application --bind 0.0.0.0:${INTERNAL_PORT} --workers ${GUNICORN_WORKERS:-2} --threads ${GUNICORN_THREADS:-8} --max-requests 1000 --max-requests-jitter 100 --timeout 120"]

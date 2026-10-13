@@ -258,17 +258,43 @@ SPECTACULAR_SETTINGS = {
     "SWAGGER_UI_FAVICON_HREF": "SIDECAR",
     "REDOC_DIST": "SIDECAR",
     "SERVERS": [],
-    "SCHEMA_PATH_PREFIX": f"/{API_PREFIX}/",
+    # Ordered, described groups shown in Swagger/ReDoc. Every operation's tag
+    # in wit/views.py must be listed here (enforced by test_api_docs_tags).
     "TAGS": [
-        {"name": "Wit", "description": "AI-powered humor endpoints"},
-        {"name": "Meta", "description": "Persona discovery and usage stats"},
-        {"name": "Health", "description": "Service health probes"},
+        {
+            "name": "Roasts & Verdicts",
+            "description": "Roasts, hot takes, ratings and judgments on people, code, URLs and ideas.",
+        },
+        {
+            "name": "Excuses & Replies",
+            "description": "Excuses to get out of things, and sarcastic replies to posts.",
+        },
+        {
+            "name": "Developer Humor",
+            "description": "Commit messages, stand-ups, code reviews, post-mortems and other engineering-flavored wit.",
+        },
+        {
+            "name": "Life & Fun",
+            "description": "Compliments, horoscopes, fortune cookies, pickup lines and other everyday wit.",
+        },
+        {
+            "name": "Personas & Discovery",
+            "description": "List personas and moods, get a random persona, batch requests and usage stats.",
+        },
+        {
+            "name": "Health",
+            "description": "Liveness, readiness and full health status probes.",
+        },
     ],
+    "SCHEMA_PATH_PREFIX": f"/{API_PREFIX}/",
+    # docExpansion "list" opens every group but keeps endpoints collapsed;
+    # groups keep the order listed in TAGS.
     "SWAGGER_UI_SETTINGS": {
         "deepLinking": True,
         "persistAuthorization": True,
         "displayRequestDuration": True,
         "docExpansion": "list",
+        "operationsSorter": "alpha",
         "tryItOutEnabled": True,
     },
 }
